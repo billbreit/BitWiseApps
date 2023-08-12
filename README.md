@@ -2,4 +2,4 @@
 
 A toolkit for creating small footprint, high performance applications with Binary Logic on Python and MicroPython platforms. 
 
-Under construction.
+See [Wiki Page](https://github.com/billbreit/BitWise/wiki)
