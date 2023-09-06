@@ -9,27 +9,17 @@ binary form, and learning about the binary integer approach to logic.
 
 Runs on Python 3.9 and micropython v1.20.0 on a Pico.
 
-module:
-  bitlogic
-
-version:
-  v0.3.1
-
-sourcecode:
-  https://github/billbreit/hello-world
-
-copyleft:
-  2023 by Bill Breitmayer
-       
-licence:
-  GNU GPL v3 or above
-      
-author:
-  Bill Breitmayer
+module:     bitlogic
+version:    v0.3.2
+sourcecode: https://github/billbreit/BitWise
+copyleft:   2023 by Bill Breitmayer
+licence:    GNU GPL v3 or above
+author:     Bill Breitmayer
     
 """
 
 from math import log, floor, ceil
+from random import randint
 
 try:
     from functools import partial
@@ -55,6 +45,17 @@ except:
 
         return _partial
     """
+    
+def genrandint(size):
+    """ overcome 2**30 barrier in mpy, size is base 2"""
+    
+    dvd, man = divmod(size, 30)
+    rint = 0
+    
+    if man > 0: rint = randint(0, 2**man)
+    for d in range(dvd):
+        rint|= rint<<30 | randint(0, 2**30)
+    return rint  
 
 
 nl = print
@@ -710,6 +711,12 @@ if __name__=='__main__':
     print('1^make_bitmask(4)      ', bin(1^make_bitmask(4)))
     print('1^int(0b1111)          ', bin(1^int(0b1111))) 
     nl()
+    
+    print('Test for genrandint(), size is base 2')
+    for i in [ 0, 1, 29, 30, 31, 32, 59, 62 ,63, 100 ]:
+        print('randint for size ', i,' = ' , genrandint(i))
+    nl()
+    
   
     nl()
     print('The End.')
