@@ -8,4 +8,4 @@ So far, I've added:
 
 * a early beta version of ListStore, a generic 'multi-list' structure illustrating binary logic techniques for compact, high-performance data structures.   
 
-See [Wiki Page](https://github.com/billbreit/BitWise/wiki)
+See [Wiki Page](https://github.com/billbreit/BitWiseApps/wiki)
