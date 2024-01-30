@@ -1,7 +1,7 @@
 
 """
 
-Bit Logic
+BitInt, an idealized bit integer class. 
 
 Ones-complement wrapper for Python standard twos-complement logic,
 mostly useful for debugging and displaying an int or BitInt in
@@ -9,8 +9,8 @@ binary form, and learning about the binary integer approach to logic.
 
 Runs on Python 3.9 and micropython v1.20.0 on a Pico.
 
-module:     bitlogic
-version:    v0.3.2
+module:     bitint
+version:    v0.3.3
 sourcecode: https://github/billbreit/BitWise
 copyleft:   2023 by Bill Breitmayer
 licence:    GNU GPL v3 or above
@@ -18,44 +18,14 @@ author:     Bill Breitmayer
     
 """
 
-from math import log, floor, ceil
-from random import randint
-
 try:
-    from functools import partial
+    from utils import fix_paths
 except:
-    # Ported to CircuitPython from the MicroPython library (?)
-    def partial(func, *args, **kwargs):
-        """Creates a partial of the function"""
-
-        def _partial(*more_args, **more_kwargs):
-                local_kwargs = kwargs.copy()
-                local_kwargs.update(more_kwargs)
-                return func(*(args + more_args), **local_kwargs)
-
-        return _partial
+    from dev.utils import fix_paths
+fix_paths()
     
-    """
-    # micropython community
-    def partial(func, *args, **kwargs):
-        def _partial(*more_args, **more_kwargs):
-            kw = kwargs.copy()
-            kw.update(more_kwargs)
-            return func(*(args + more_args), **kw)
-
-        return _partial
-    """
     
-def genrandint(size):
-    """ overcome 2**30 barrier in mpy, size is base 2"""
-    
-    dvd, man = divmod(size, 30)
-    rint = 0
-    
-    if man > 0: rint = randint(0, 2**man)
-    for d in range(dvd):
-        rint|= rint<<30 | randint(0, 2**30)
-    return rint  
+from dev.bitlogic import power2, partial, bit_length, zfill, invert, make_bitmask, bform  
 
 
 nl = print
@@ -78,8 +48,9 @@ class BitInt(object):
             raise BitLogicError('Negative values and `0 ( minus zero ) are not BitInt numbers.')
 
         self._int = int(an_integer)
-        
-    def int(self, other):
+    
+    @classmethod    
+    def int(cls, other):
         """ Type scrubbing, bit kludgy but necessary"""
         if isinstance(other, BitInt):
             return other._int
@@ -166,8 +137,8 @@ class BitInt(object):
 
                 numb = 0
                 for i, v in enumerate([1, 1, 0, 1 ]):
-                        if v == 1:
-                                numb |= pow(2, i )
+                    if v == 1:
+                        numb |= pow(2, i )
                 print(numb)
                 
                 will recover the int(11).
@@ -182,7 +153,7 @@ class BitInt(object):
         for bindex in range(self.bit_length):
         
             # print('iter- bindex ', bindex)
-            test = pow( 2, bindex ) & self._int
+            test = power2(bindex) & self._int
             if test == 0:
                 yield 0
             else:
@@ -200,9 +171,7 @@ class BitInt(object):
     def num_bits_set(self):
 
         bl = [ v for v in iter(self) ]
-        #print('nbs ', bl)
-        #print('nbs ' , bl.count(1))
-        return bl.count(1)
+        return bl.count(1)    # faster than sum ?
     
     @property       
     def bin(self):
@@ -232,7 +201,6 @@ class BitList( list ):
     def make_bitmask( self ):
         """ Bit_mask of binary ones with max length in collection
                 of 'binary' ints. Inverting leading 0 to 1 is significant."""
-        # return int(str( '1'* self.max_length), base=2)  crashes micropython, no base kw
         return int(str( '1'* self.max_length), 2)
     
     def form( self, x:int ):
@@ -245,108 +213,28 @@ class BitList( list ):
 bitlist = BitList
 
 
-def zfill(x:int, maxlen=None):
-    """ Make string of 1/0 for int x, filling zeros to left.
-            For upython, dumb but nails it and can also work as
-            zfill of last resort."""
+"""Found code ( on stackoverflow ) Experimental Stuff, doesn't work with micropython """
+
+def text_to_bits(text, encoding='utf-8', errors='surrogatepass'):
+    bits = bin(int.from_bytes(text.encode(encoding, errors), 'big'))[2:]
+    return bits.zfill(8 * ((len(bits) + 7) // 8))
+
+def bits_to_text(bits, encoding='utf-8', errors='surrogatepass'):
+    n = int(bits, 2)
+    return n.to_bytes((n.bit_length() + 7) // 8, 'big').decode(encoding, errors) or '\0'
     
-    if maxlen is None: return None
-    
-    s = []
-    for i in range(maxlen):
-        if x << i == 0:
-            s.insert(0, '0')
-        else:
-            s.insert(0, '1') 
-                     
-    return ''.join(s)
+"""  not working on mpy, no str.zfill
+print('Quick test of text/bits')
+bits = text_to_bits('Hello World /n I\'m the %$^&@##$* Slime That Comes Out of Your TV ! ')
+print(bits)
+print(int(bits,2))
+print(hex(int(bits,2)))
+print(int(hex(int(bits,2)),16))
+nl()
+text = bits_to_text(bits)
+print(text)
+"""
 
-def bit_length( bint:int ):
-    """ bint is binary view of int.
-            For bitmask purposes, a zero is FALSE
-            and not just no value and has length 1.
-    """
-    
-    if bint is None or not isinstance(bint, int):
-            return 0
-    if bint == 0:
-       return 1 # unlike Py bit_length()
-       
-    lb = log(bint,2)
-    lbi = int(lb)
-    if lb == lbi: 
-            return lbi+1
-    return ceil(lb)
-
-
-def make_bitmask( blength=1 ):
-    """Need to partial make_bitmask with max length of collection
-       of 'binary' ints."""
-       
-    return int(str( '1'* max(blength, 1)), 2)
-    
-def make_bitmask_for( x:int ):
-
-    return make_bitmask(bit_length(x))
-
-
-def bform( x:int, maxblen=None ):
-    """Formatter for bitint types, with maxblen option."""
-    # print('bform ', x, maxblen )
-    maxblen = maxblen or bit_length(x)
-    try:
-            return format(x, 'b').zfill(maxblen or x.bit_length())
-    except: # upython
-            return zfill(x, maxblen)
-
-""" Functions to Compare Bitwise Integers"""
-
-
-""" Possible for the log func to blow up with large numbers, 2^1000 or so ?"""
-
-def one_of( x:int, y:int ):
-    """Only one of x in y. """
-    if x == 0: return False
-    t = log((x & y), 2)
-    return t == floor(t)
-
-def morethanone_of( x:int, y:int ):
-    """More than one of x in y. """
-    if x == 0: return False
-    t = log((x & y), 2)
-    return t != floor(t)
-    
-def all_of( x:int, y:int ):
-    """All of x in y"""
-    if x == 0: return False 
-    return x & y == x
-
-def any_of( x:int, y:int ):
-    """Any of integer x in y. """
-    return x & y > 0
-
-def none_of( x:int, y:int ):
-    """None of x in y."""
-    return x & y == 0
-
-"""Basic operations on bit integers"""
-
-def diff( x:int, y:int ):
-    """( 1, 0 ) or ( 0, 1 ), but not both nor neither ( XOR )"""
-    return x ^ y
-
-def match( x:int, y:int ):
-    """Like all_of, but returns value rather than bool"""
-    return x & y
-    
-def invert( x:int ):
-    """Logical ones-complement, not '~' which sets neg. bit"""
-    # must be partialled with bitlength 
-    
-    if x == ~0: return 0
-    if x == 0: return 1
-    
-    return x ^ make_bitmask_for(x)
 
 
 if __name__=='__main__':
@@ -384,16 +272,17 @@ if __name__=='__main__':
     itest = bitint(33) # not working
     # itest = 33
     
+    bform6 = partial(bform, maxlen=6 )
     print('Test non-destructive dunder methods')
     nl()
-    print('bi and itest ', bi.bin, itest.bin)
+    print('bi and itest ', bform6(bi), bform6(itest))
     nl()
     
-    print('bi & itest  ', bi & itest, bin(bi & itest))
-    print('bi | itest  ', bi | itest, bin(bi | itest))
-    print('bi ^ itest  ', bi ^ itest, bin(bi ^ itest))
-    print('bi << 1     ', bi << 1,    bin(bi << 1))
-    print('bi >> 1     ', bi >> 1,    bin(bi >> 1))
+    print('bi & itest  ', bi & itest, bform6(bi & itest))
+    print('bi | itest  ', bi | itest, bform6(bi | itest))
+    print('bi ^ itest  ', bi ^ itest, bform6(bi ^ itest))
+    print('bi << 1     ', bi << 1,    bform6(bi << 1))
+    print('bi >> 1     ', bi >> 1,    bform6(bi >> 1))
     nl()
     
     print('Test destructive dunder methods')
@@ -483,6 +372,7 @@ if __name__=='__main__':
     print('Using iter(odd_index) ', odd_index.bin ,' to fetch odds from list') 
     nl()
     
+    # better ways to do, bitlogic bit_indexes
     olist = []
     for i, v in enumerate(iter(odd_index)):
         print('odds', v)
@@ -529,9 +419,10 @@ if __name__=='__main__':
     print('blist make_bitmask: ', blist.form(blist.make_bitmask()))
     nl()
     
+    
     print('bbform, bform partialled to length blist.max_length')
     nl()
-    bbform = partial( bform, maxblen=blist.max_length)
+    bbform = partial( bform, maxlen=blist.max_length)
     for i, bint in enumerate(blist):
         print('slot', i, ' = ', bbform(bint))
     nl()
@@ -549,177 +440,5 @@ if __name__=='__main__':
 
     nl()
     nl()
-
-    
-    print('=== Functions ===')
-    nl()
-    a = int(0b11101100000111)
-    b = int(0b10000000000000)
-    c = int(0b10100000000100)
-    d = int(0b00001111000000)
-    o = int(0b00000000000001)
-    z = int(0b00000000000000)
-    
-    print('bit_length')
-    nl()
-    
-    bbform = partial( bform, maxblen=16)
-    
-    print('Using bbform partialled to length 16')
-    nl()
-    print('a: ', bbform(a), '  bit_length(a) ', bit_length(a))
-    print('b: ', bbform(b), '  bit_length(b) ', bit_length(b))
-    print('c: ', bbform(c), '  bit_length(c) ', bit_length(c))
-    print('d: ', bbform(d), '  bit_length(d) ', bit_length(d))
-    print('o: ', bbform(o), '  bit_length(o) ', bit_length(o))
-    print('z: ', bbform(z), '  bit_length(z) ', bit_length(z))
-    nl()
-    
-    print('bit_length 4.3:  ', bit_length(4.3))
-    print('bit_length None: ', bit_length(None))
-    nl()
-
-    print('bbform = partial( bform, maxblen=blist.max_length)')
-    bbform = partial( bform, maxblen=blist.max_length)
-    pmake_bit_mask = partial( make_bitmask, blength=blist.max_length)  
-
-    nl()
-    print('bbform(blist.max_length)')
-    nl()
-    print('a: ', bbform(a))
-    print('b: ', bbform(b))
-    print('c: ', bbform(c))
-    print('d: ', bbform(d))
-    print('o: ', bbform(o))
-    print('z: ', bbform(z))
-    nl()
-    
-    print('one_of x in  y') 
-    nl()
-    print('one_of(b,a): ', one_of(b,a))
-    print('one_of(d,a): ', one_of(d,a))
-    print('one_of(o,a): ', one_of(o,a))
-    print('one_of(a,a): ', one_of(a,a))
-    print('one_of(b,b): ', one_of(b,b))
-    print('one_of(z,b): ', one_of(z,b))
-    nl()
-   
-    print('morethanone_of x in  y, detect conflict') 
-    nl()
-    print('morethanone_of(b,a): ', morethanone_of(b,a))
-    print('morethanone_of(d,a): ', morethanone_of(d,a))
-    print('morethanone_of(o,a): ', morethanone_of(o,a))
-    print('morethanone_of(a,a): ', morethanone_of(a,a))
-    print('morethanone_of(b,b): ', morethanone_of(b,b))
-    print('morethanone_of(z,z): ', morethanone_of(z,z))
-    nl()
-    
-    print('all_of x in y, logical AND ')
-    nl()
-    print('all_of(b,a): ', all_of(b,a))
-    print('all_of(c,a): ', all_of(c,a))
-    print('all_of(d,a): ', all_of(d,a))
-    print('all_of(a,a): ', all_of(a,a))
-    print('all_of(o,a): ', all_of(o,a))
-    print('all_of(z,z): ', all_of(z,z))
-    nl()
-    
-    print('any_of x in y, logical OR ')
-    nl()
-    print('any_of(c,b): ', any_of(c,b))
-    print('any_of(d,b): ', any_of(d,b))
-    print('any_of(o,d): ', any_of(o,d))
-    print('any_of(a,a): ', any_of(a,a))
-    print('any_of(z,a): ', any_of(z,a))
-    print('any_of(z,z): ', any_of(z,z))
-    nl()
-    
-    print('none_of x in y - logical NAND')
-    nl()
-    print('none_of(d,c): ', none_of(d,c))      
-    print('none_of(d,a): ', none_of(d,a))
-    print('none_of(o,a): ', none_of(o,a))
-    print('none_of(a,a): ', none_of(a,a))
-    print('none_of(z,a): ', none_of(z,a))
-    print('none_of(z,z): ', none_of(z,z))
-    nl()
-    
-    print('diff between x and y - logical XOR')
-    nl()
-    print('diff(d,b): ', bbform(diff(d,b)))      
-    print('diff(d,a): ', bbform(diff(d,a)))
-    print('diff(o,a): ', bbform(diff(o,a)))
-    print('diff(a,a): ', bbform(diff(a,a)))
-    print('diff(z,a): ', bbform(diff(z,a)), '  compare to invert(a): ', bbform(invert(a)))
-    print('diff(z,z): ', bbform(diff(z,z)))
-    nl()
-    print('match() returning int of matches, similar to all_of')
-    nl()
-    print('match(d,b): ', bbform(match(d,b)))      
-    print('match(d,a): ', bbform(match(d,a)))
-    print('match(o,a): ', bbform(match(o,b)))
-    print('match(a,a): ', bbform(match(a,a)))
-    print('match(z,a): ', bbform(match(z,a)))
-    nl()
-    
-    print('To Invert Or Not ')
-    nl()
-    
-    print('Invert combined with logical functions ') 
-    print('match( a , invert(a)): ', bbform(match( a , invert(a))))
-    print('any_of( a, invert(a)):   ', any_of( a, invert(a)))
-    print('none_of( a, invert(a)):   ', none_of( a, invert(a)))
-    nl()
-    
-    print('The Reason We Invert')
-    nl()
-    print('a:         ', bbform(a))
-    print('invert(a): ', bbform(invert(a)))
-    print('b:         ', bbform(b))      
-    print('invert(b): ', bbform(invert(b)))
-    print('o:         ', bbform(o))      
-    print('invert(o): ', bbform(invert(o)))
-    print('z:         ', bbform(z)) 
-    print('invert(z): ', bbform(invert(z)), 'pythonically wrong, but right for bitint or in blist')
-    print('bool(invert(z)): ', bool(invert(z)))
-    nl()
-    
-    print('Comparing ones to twos complement Python')
-    nl()
-    print('~0: ', ~0)
-    print('~0 == -1: ', ~0 == -1)
-    print('~-1 ', ~-1)
-    print('~~0 ', ~~0)
-    print('bin(~0) ', bin(~0))
-    print('bin(-1) ', bin(-1))    
-    print('bool(~0) ', bool(~0))
-    print('bool(-1) ', bool(-1))
-    # print('bool(bin(~0)) ', bool(bin(~0)))
-    nl()
-    print('invert(0) ', invert(0))
-    print('invert(~0) ', invert(~0))
-    nl()
-    
-    print('bitlength(0) ', bit_length(0))
-    print('bitlength(1) ', bit_length(1))
-    nl()
-    
-    print('make_bitmask_for(0)    ', bin(make_bitmask_for(0)))
-    print('1^make_bitmask_for(0)  ', bin(1^make_bitmask_for(0)))
-    print('make_bitmask(0))       ', bin(make_bitmask(0)))
-    print('make_bitmask(4))       ', bin(make_bitmask(4)))
-    print('1^make_bitmask(4)      ', bin(1^make_bitmask(4)))
-    print('1^int(0b1111)          ', bin(1^int(0b1111))) 
-    nl()
-    
-    print('Test for genrandint(), size is base 2')
-    for i in [ 0, 1, 29, 30, 31, 32, 59, 62 ,63, 100 ]:
-        print('randint for size ', i,' = ' , genrandint(i))
-    nl()
-    
-  
-    nl()
-    print('The End.')
-    nl()
-    
+    print('End of Test')
 
