@@ -79,7 +79,7 @@ print()
 scale = 200   # creates 2^scale integers, mpy log blowup at 2^127
 bit_density = 20  # density of bits, mainly for bit_indexes testing
 num_of_elements = 100
-inner_repeat = 10
+inner_repeat = 100
 assert num_of_elements >= inner_repeat, "Repeat must be less than num elements."
 
 
@@ -134,10 +134,6 @@ def big_div_time(n):
         for j in range(num_of_elements): 
             x = big_floats[j]/randfloat
 
-# del(big_floats)
-
-# print(genrandint(300))
-
             
 def build_powersof2(number_of_ints, scale, density=None):
     assert density <= scale, \
@@ -151,14 +147,7 @@ def build_powersof2(number_of_ints, scale, density=None):
     
     return po2
 
-
-
 powersof2 = build_powersof2( num_of_elements, scale, bit_density)
-
-
-
-
-            
 
 @timer
 def and_time(n): 
@@ -171,9 +160,7 @@ def andnot_time(n):
     for i in range(n): 
         for j in range(num_of_elements): 
             x = powersof2[i] & ~powersof2[j]
-            
-
-            
+         
 @timer
 def or_time(n): 
     for i in range(n): 
@@ -459,3 +446,7 @@ except:
 #for i in powersof2:
     # py_bitlen = i.bit_length() if py_bitlen_avail else 'not avail.'
 #    print(i, logar2_hybrid(i), bit_length(i)  )
+
+
+del(powersof2)   # getting thonny.plugins.micropython.mp_back.ManagementError: 
+

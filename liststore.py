@@ -830,11 +830,11 @@ if __name__ == '__main__':
 	if gc_present:
 		main_end = mem_free()
 		print('=== Memory Usage for MicroPython ===') 
-		print('Total memory started ', mem_start )
-		print('Memory use to start of __main___ ', mem_start-main_start)
-		print('ListStore with instance ', main_start - mem_lstore )  
-		print('Total memory used ', mem_start-main_end)
+		print('Total memory started: ', mem_start )
+		print('Memory use to start of __main___ :', mem_start-main_start)
+		print('ListStore with instance ( 5 cols x 5 rows ): ', main_start - mem_lstore )  
+		print('Total memory used: ', mem_start-main_end)
 		collect()
-		print('Mem after collect ',  mem_start-mem_free()) 
+		print('Mem after collect: ',  mem_start-mem_free()) 
 		nl()
 	

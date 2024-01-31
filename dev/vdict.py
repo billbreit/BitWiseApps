@@ -12,12 +12,13 @@ try:
     odict_avail = True
 except:
     odict_avail = False
-
-try:
-    from utils import fix_paths
-except:
-    from dev.utils import fix_paths
-fix_paths()
+    
+if __name__ == '__main__':  # not imported, fix up to importer
+    try:
+        from utils import fix_paths
+    except:
+        from dev.utils import fix_paths
+    fix_paths()
 
 from dev.bitlogic import bit_indexes
 

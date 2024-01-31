@@ -38,28 +38,49 @@ def genrandint(size):
 
     
 def fix_paths():
-    """Fix for mpy filesystem and relative imports, os.pwd() always '/'. """
+    """Fix for mpy filesystem and relative-like imports.
+       Note that:
+       * micropython root ('') always in path.
+       * getcwd always '/' no matter what and not literally in path,
+         but works like blank '' anyway ( I think ). """
     
     import os, sys
 
     libs = ['/dev', '/ulib']
+    
+    # print('starting fix_paths')
 
     # print('path before ', sys.path)
-    # print('pwd ', os.getcwd())
+    # print('getcwd ', os.getcwd())
 
     p = os.getcwd()
 
-    parentdir = ('/'.join(p.split('/')[:-1]))
+    if '\\' in p:
+        parse = '\\'  # windows
+        # print('windows')
+    else:
+        parse = '/'  # linux
+        # print('linux')
+
+    parentdir = parse.join(p.split(parse)[:-1])      
+    
     # print('parentdir ', parentdir)
     
-    if parentdir not in sys.path:   # python
+    if parentdir not in sys.path:   # python,
         sys.path.append(parentdir)
-    else:                           #micropython
-        for l in libs:
-            if l not in sys.path:
-                sys.path.append(parentdir + l)
+        # print('path after in append parentdir ', sys.path)
+        # print('in append parentdir, supposedly returning')
+        return
+                          
+    for l in libs:  #micropython
+        if parentdir+l not in sys.path:
+            # print('in append parentdir+l')
+            sys.path.append(parentdir + l)
 
     # print('path after ', sys.path)
+    # print('end')
+    
+    return
 
 
 

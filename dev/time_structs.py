@@ -23,7 +23,9 @@ try:
     from utils import fix_paths
 except:
     from dev.utils import fix_paths
+
 fix_paths()
+
 
 from liststore import ListStore, TupleStore
 from dev.vdict import VolatileDict
@@ -34,7 +36,7 @@ if mem_free_avail:
     print('Mem use after import: ', start_mem - mem_free() )
     print('Increase mem alloc after import: ', mem_alloc() -start_alloc ) 
 
-ntest = 10
+ntest = 10  
 tscale = 1000000  # scaling ns to ms
 
 starttotalt = monotonic_ns()
