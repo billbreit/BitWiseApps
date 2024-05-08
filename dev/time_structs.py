@@ -74,10 +74,6 @@ print('Scale is : ', len(lpairs))
 print('Repeats = ', ntest)
 print()
 
-
-
-
-
 # Letters = namedtuple('Letters', [ 'upper', 'lower' ])
 
 imax = 2**16
@@ -85,11 +81,12 @@ imax = 2**16
 
 print('##### First Round ... build dict #####' )
 
-dd = {}
+
 
 startt = monotonic_ns()
 
 for i in range(ntest):
+    dd = {}
     for k, v in lpairs:
         dd[k] =  v  
 
@@ -98,10 +95,29 @@ stopt = monotonic_ns()
 print()
 
 print('dict len(dd): ', len(dd))
-print('dict build (ms): ', (stopt - startt)/tscale)
+print('build dict with for k, v in lpairs loop (ms): ', (stopt - startt)/tscale)
 
 if mem_free_avail:
     print('Mem use after dict build: ', start_mem - mem_free() )
+print()
+
+del(dd)
+
+startt = monotonic_ns()
+
+for i in range(ntest):
+    dd = {}
+    dd = dict(lpairs)
+        
+stopt = monotonic_ns()
+print()
+
+print('dict len(dd): ', len(dd))
+print('build dict directly from dict(lpairs) (ms): ', (stopt - startt)/tscale)
+print()
+print("Note: should be faster than loop ('repeat' versus 'repeat x scale')," )
+print('but is slower on micropython Pico v.21, about same on Nano ESP32 v.22.')
+print('Compare to VDict, subclass of dict.' )
 print()
 
 print('##### build OrderedDict #####' )
@@ -109,11 +125,12 @@ print('##### build OrderedDict #####' )
 del(dd)
 if mem_free_avail: collect()
 
-dd = OrderedDict()
+
 
 startt = monotonic_ns()
 
 for i in range(ntest):
+    dd = OrderedDict()
     for k, v in lpairs:
         dd[k] =  v  
 
@@ -136,10 +153,9 @@ print('##### OrderedDict rewrites #####' )
 
 startt = monotonic_ns()
 
-
+# use existing dd 
 for i in range(ntest):
     for k, v in lpairs:
-        # key = ( l1, l2 )
         dd[k] =  v 
         
 stopt = monotonic_ns()
@@ -160,15 +176,13 @@ print()
 
 print('##### Second Round ... append/extend list  #####' )
 
-klist = []
+
 
 startt = monotonic_ns()
 
 for i in range(ntest):
-        # key = ( l1, l2 )
-        # key =  l1 + l2  # ''.join([l1,l2])
-        # append or assign pretty much the same, but MUCH less memory, 50k + ??? 
-        klist.extend( lpairs )  # key  # ( l1, l2 ) $ reports 58944
+    klist = []
+    klist.extend( lpairs )  # key  # ( l1, l2 ) $ reports 58944
 
         
 stopt = monotonic_ns()
@@ -182,19 +196,12 @@ klist = []
 startt = monotonic_ns()
 
 for i in range(ntest):
+    klist = []
     for k, v in lpairs:
-        # key = ( l1, l2 )
-        # key =  l1 + l2  # ''.join([l1,l2])
-        # append or assign pretty much the same, but MUCH less memory, 50k + ??? 
         klist.append( k )  # key  # ( l1, l2 ) $ reports 58944
 
         
 stopt = monotonic_ns()
-
-# print('len(klist): ', len(klist))
-# print("dd[('Bg')]: ", dd[('Bg')])   # tuples
-# print("dd['Bg']: ", dd['Bg'])     # strings
-# print(klist)
 
 
 
@@ -222,7 +229,7 @@ print('List index() Function(ms): ', (stopt - startt)/tscale)
 print()
 
 
-del klist
+del(klist)
 
 if mem_free_avail:
     collect()
@@ -236,6 +243,8 @@ print()
 print('##### Third Round ... ListStore  #####' )
 print()
 
+
+print('ListStore append lpairs in loop.')
 startt = monotonic_ns()
 # print('Start time(ns): ', startt )
 
@@ -253,7 +262,29 @@ for i in range(ntest):
 stopt = monotonic_ns()
 
 
-print('Create ListStore(ms): ', (stopt - startt)/tscale)
+print('Append ListStore(ms): ', (stopt - startt)/tscale)
+print('ls.length ', ls.length)
+print('index ' , ls.index )
+print()
+
+del(ls)
+if mem_free_avail: collect()
+
+print('ListStore extend with lpairs.')
+startt = monotonic_ns()
+
+for i in range(ntest):
+        # print('Iter ', i , 'mem avail: ', mem_free())
+    ls = ListStore(['key', 'value'])
+     
+    ls.extend(lpairs)  
+
+
+
+stopt = monotonic_ns()
+
+
+print('Extend ListStore(ms): ', (stopt - startt)/tscale)
 print('ls.length ', ls.length)
 print('index ' , ls.index )
 print()
@@ -370,7 +401,7 @@ for i in range(ntest):
 stopt = monotonic_ns()
 
 
-print('TupleStore(ms): ', (stopt - startt)/tscale)
+print('Extend TupleStore(ms): ', (stopt - startt)/tscale)
 print('index ' , ls.index )
 print()
 
@@ -391,8 +422,9 @@ print()
 
 startt = monotonic_ns()
 
-vdict = VolatileDict()
+
 for i in range(ntest):
+    vdict = VolatileDict()
     for k, v in lpairs:
         vdict[k] = v
 

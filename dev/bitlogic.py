@@ -28,7 +28,7 @@ parentdir = ('/'.join(p.split('/')[:-1]))
 sys.path.append(parentdir)
 
 from math import log2, floor, ceil
-from random import randint
+from random import randint, choice
 from ulib.functools import partial
 
 
@@ -248,10 +248,24 @@ def bit_length_bin(bint:int):
     
 
     
+def make_bitint_from_neg( n:int, blength =1):
+    """Not sure when this would be used.  Semantics ? """
+
+    if n >= 0:
+        return n
+
+    return invert(int(bin(n)[3:],2 ), max(blength, bit_length(n))) 
+    
+
+    
    
 
 
-""" Formatting Functions """
+""" String Formatting Functions """
+
+
+"""Bitmask idiom for int ->  1 << ( bitlen(int)) 
+   or  len(list), or remove top bit int & ( 1 << ( bitlen(int)-1) ) """
     
 
 def make_bitmask( blength=1 ):
@@ -359,7 +373,7 @@ def distance(x:int, y:int):
     
 """ Under Dev: Bit 'Slicing' Operations, not fond of these.  Better/Faster ? """
 
-def remove_bit(bint:int, slot:int):
+def remove_bit_bin(bint:int, slot:int):
     """Strings make it trivial but it works and may be useful.
        Slot starts with 0, like base 2 exponents"""
     
@@ -379,7 +393,7 @@ def remove_bit(bint:int, slot:int):
     return int(bstr[:blen-slot-1]+bstr[blen-slot:],2)
 
 
-def insert_bit(bint:int, slot:int, value:int):
+def insert_bit_bin(bint:int, slot:int, value:int):
     
     if value not in [ 0, 1 ]:
         return None
@@ -401,14 +415,50 @@ def insert_bit(bint:int, slot:int, value:int):
     # print('bstr[blen-slot:] ', bstr[blen-slot:])
     
     return int(bstr[:blen-slot]+vstr+bstr[blen-slot:],2)
+
+"""Maybe better than the bin versions in terms of binary purity,
+   but maybe faster on mpy, probably not on python ...""" 
     
-def make_bitint_from_neg( n:int, blength =1):
-    """Not sure when this would be used.  Semantics ? """
+def bit_remove(bint:int, index:int):
+    """Delete a single bit """
+    
+    if bint == 0: return 0
+    if index > bit_length(bint)-1 or index < 0: return bint
+    
+    # print(bint, bin(bint), index)
+    # print('left ', bin((bint >> index+1 )))
+    # print(bin((bint >> index )<< (index) ))
+    # print('right ', bin(bint&(2**index-1)))
+    
+    x = (bint >> index+1 ) << index | bint & (power2(index)-1)
+    
+    # print(bin(bint), index, bin(x))
+    
+    return x
+    
+    
+def bit_insert(bint:int, index:int, value=1):
+    """insert single bit before index.  value default is 1, implies an action."""
+    
+    if not is_bitint(bint) or value not in [ 0, 1 ] or index < 0:
+        return None  # use None as error
+    
+    if index > bit_length(bint)-1 and value > 0: return bint | power2(index)
+    
+    # print(bint, bin(bint), index, value)
+    # print('shiftright ', bin((bint >> index )))
+    # print('shiftright + left ', bin((bint >> index )<<1))
+    # print('or val ', bin(((bint >> index ) << 1) | value )) 
+    # print('shiftleft ', bin((((bint >> index ) << 1 ) | value )  << index ))
+    # print('bint right mask ', bin(bint&((2**index)-1)))
+    
+    x = (((bint >> index ) << 1 ) | value ) << index | bint & (power2(index)-1 )
+    
+    # print(bin(bint), index, bin(x))
+    
+    return x
+    
 
-    if n >= 0:
-        return n
-
-    return invert(int(bin(n)[3:],2 ), max(blength, bit_length(n))) 
     
     
 
@@ -640,35 +690,61 @@ if __name__=='__main__':
     print('distance "hello","world" : ', distance('hello','world'))
     nl()
 
-    print('Test remove_bit')
+    print('Test bin-based remove_bit')
     nl()
     
     val = 11327
     slot = 7
-    print('Using int ', val, bin(val) , 'slot ', slot )
-    print('bit indexes ', bit_indexes(val))
+    # print('Using int ', val, bin(val) , 'slot ', slot )
+    # print('bit indexes ', bit_indexes(val))
     nl()
 
     
-    x = remove_bit(val, slot)
+    x = remove_bit_bin(val, slot)
     if x is not None:
+        print('value ', val, bin(val), ' slot ', slot )
+        print('bit indexes ', bit_indexes(val))
         print('new value ', x, bin(x))
         print('bit indexes ', bit_indexes(x))
         print('bit length ', bit_length(x))
-        print('slot ', slot )
     else:
         print(x)
     nl()
         
-    print('Test insert_bit')
+    print('Test bin-based insert_bit')
     nl()
         
-    y = insert_bit(val, slot, 1)
+    y = insert_bit_bin(val, slot, 1)
+    print('value ', val, bin(val), ' slot ', slot )
+    print('bit indexes ', bit_indexes(val))
     print('new value ', y, bin(y))
     print('bit indexes ', bit_indexes(y))
     print('bit length ', bit_length(y))
-    print('slot ', slot )
     nl()
+    
+    print()
+    print('Testing bit-op bit_remove')
+    print()
+
+    for i in [ 0, 1, 5, 7, 8, 11, 17, 21 ]:
+        print()
+        for j in [ 0, 1, 2, 3, 7 ]:
+            x = bit_remove(i, j)
+            print('bit_remove: bintint', bin(i), 'index', j, 'returned ', bin(x) )
+            # print()
+
+    print()
+    print('Testing bitip bit_insert')
+    print()
+
+    for i in [ 0, 1, 4, 7, 11, 14, 21 ]:
+        print()
+        for j in [ 0, 1, 2, 6 ]:
+            c = choice([0, 1 ])
+            x = bit_insert(i, j, c )
+            print('bit_insert: bitint', bin(i), ' index', j, 'value', c, ' returned ', bin(x) )
+            # print()
+    print()
     
     testints = ['hello', -1, ~0, 1.7, 0, 1, 2, 3, 4, 5, 227]
    

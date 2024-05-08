@@ -20,6 +20,16 @@ def timer(func, repeat=1):
          
     return wrapped_func
     
+def bitslice_insert(bint, index, bit_length, value):
+    
+    # print('bint, index, bit_length, value, ', bint, index, bit_length, value )
+    # print('shiftright then left ', bin(((( bint >> index ) << index ))))
+    # print('remainder ', bin( bint & ( 1 << index )-1))
+    
+    x = (((( bint >> index ) << bit_length) | value ) << index ) | bint & (( 1 << index )-1)
+    
+    return x
+    
     
 def genrandint(size):
     """ Overcome 2**30 barrier in mpy, size is base 2 exponent.  Numbers are probably
@@ -29,10 +39,11 @@ def genrandint(size):
     rint = 0
  
     for d in range(dvd):
-        rint|= rint<<30 | randint(0, 2**30)
-        
+        # rint = bitslice_insert( rint, 0, 30, randint(0, 2**30))
+        rint = rint<<30 | randint(0, 2**30)       
     if man > 0:
-        rint|= rint<<man | randint(0, 2**man)
+        # rint = bitslice_insert(rint, 0, man, randint(0, 2**man))
+        rint = rint<<man | randint(0, 2**man)  
         
     return rint  
 
@@ -46,7 +57,7 @@ def fix_paths():
     
     import os, sys
 
-    libs = ['/dev', '/ulib']
+    mpy_libs = ['/dev', '/ulib']
     
     # print('starting fix_paths')
 
@@ -72,7 +83,7 @@ def fix_paths():
         # print('in append parentdir, supposedly returning')
         return
                           
-    for l in libs:  #micropython
+    for l in mpy_libs:  #micropython
         if parentdir+l not in sys.path:
             # print('in append parentdir+l')
             sys.path.append(parentdir + l)
@@ -81,6 +92,19 @@ def fix_paths():
     # print('end')
     
     return
+
+if __name__ == '__main__':
+
+    size = 100
+    print()
+    print('=== Scale is ', size, ' bits. ===')
+    print()
+    for i in range(0, 100):
+        x = genrandint(size)
+        # print('exp ', exp, bin(x))
+        print(f'exp, {i}   {x:>{size}b}') 
+
+
 
 
 

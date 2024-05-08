@@ -2,28 +2,13 @@
 liststore - a column-oriented data store using a generalized list of lists structure, 
 with the usual list-like operations.
 
-module:     liststore
-version:    v0.4.1
-sourcecode: https://github.com/billbreit/BitWiseApps
-copyleft:   2024 by Bill Breitmayer
-licence:    GNU GPL v3 or above
-author:     Bill Breitmayer
-
 For example, a structure for column_defs ['name', 'address', 'phone']:
-
-people = [[ 'Bob', '733 Main Street', '123-456-7890' ],
-          [ 'Mary', '22 Any Avenue', '123-456-2222' ],
-          [ 'Sue', '11 My Way', '123-456-3333' ]]
-          
-ls = ListStore(['name', 'address', 'phone'])
-          
-ls.extend(people)
 
 ls._store = [['Bob', 'Mary', 'Sue'],
              ['733 Main Street', '22 Any Avenue', '11 My Way'],
              ['123-456-7890', '222-444-6666', '123-456-7890' ]]
              
-ls.get(1, 'address' ) would return '22 Any Avenue'              
+ls.get('address', 1 ) would return '22 Any Avenue'              
              
           
 ls.get_row( 0 ) would return ['Bob', '733 Main Street', '123-456-7890']
@@ -36,7 +21,12 @@ ls.get_row( 0 ) would return ['Bob', '733 Main Street', '123-456-7890']
  
 Known to run on Python 3.9, micropython v1.20-22 on a Pico and Arduino Nano ESP32. 
 
-
+module:     liststore
+version:    v0.4.1
+sourcecode: https://github.com/billbreit/BitWiseApps
+copyleft:   2024 by Bill Breitmayer
+licence:    GNU GPL v3 or above
+author:     Bill Breitmayer
 	
 """
 
@@ -58,7 +48,7 @@ from collections import namedtuple
 from math import log, floor, ceil
 
 from ulib.getset import itemgetter
-from ulib.bitops import power2, bit_indexes, bitslice_insert, bit_remove
+from ulib.bitops import power2, bit_indexes, bitslice_insert
 
 
 nl = print
@@ -70,6 +60,66 @@ nl = print
 
 
 """
+
+
+'''
+class ListStoreBaseError(Exception):
+	pass
+		
+
+class ListStoreBase(object):
+	""" Constructor class for ListStore. Basic features and a few utility methods."""
+
+		
+	def __new__(cls, column_defs:list=None, defaults:list=None, *args, **kwargs):
+	
+		# print('In new ', column_defs, defaults, types ) 
+		
+		if column_defs is None or not isinstance(column_defs, list) or column_defs==[]:
+			raise ListStoreError('ListStore column_def must have at least one column, in form List[str].')
+		
+		nclass = super().__new__( cls )
+		
+		nclass._slots = column_defs
+		nclass._defaults = defaults or []
+		nclass._store = []
+			
+		for i in range(len(nclass._slots)):
+			nclass._store.append([])
+
+		for i, sl in enumerate(nclass._slots):
+			iget = itemgetter(i)(nclass._store)  # getter only, no setter
+			setattr(nclass, sl, iget)
+	  
+		return nclass
+		
+	
+	def __init__(self, *args, **kwargs ):
+			
+		super().__init__()   # *args, **kwargs dropped ?  May help in long run.
+		
+	def __iter__(self):
+		"""Yeild columns as list of lists, an iterator over rows."""
+		
+		yield from [ list(row) for row in zip(*(self._store))]
+	
+	@property
+	def length(self):
+		return len(self._store[0])
+	
+	@property
+	def slots(self):
+		return self.__slots__
+	
+	@property
+	def defaults(self):
+		return self._defaults
+	
+	@property
+	def store(self):
+		return self._store
+'''
+
 
 		
 		
@@ -102,12 +152,13 @@ class ListStore(object):
 			self._store.append([])
 		
 		self._changed = [ 0 for i in range(len(self.slots))]  # list[int] for each column
+		self._deleted = 0     # not used yet, a single int mapping rows in changed columns
 		self._indexer = Indexer(self.slots, self.store )
 		
 	def __iter__(self):
 		"""Yeild columns as list of lists, an iterator over rows."""
 
-		yield from [ list(row) for i, row in enumerate(zip(*(self._store))) ]
+		yield from [ list(row) for i, row in enumerate(zip(*(self._store))) if not ((self._deleted >> i ) & 1) ]
 		
 	@property
 	def length(self):
@@ -128,12 +179,10 @@ class ListStore(object):
 	@property
 	def changed(self) -> int:
 		return self._changed
-	
-	'''	
+		
 	@property
 	def deleted(self) -> int:
 		return self._deleted
-	'''
 		
 	def rows_changed(self) -> int:
 		"""Return column mask of rows changed, by ORing in each
@@ -164,7 +213,17 @@ class ListStore(object):
 		"""Implies single reader, may need reset_changed_slot for multiple readers"""
 		for i in range(len(self.slots)):
 			self._changed[i] = 0
-	
+			
+	def delete(self, row:int ):
+		"""Mark as deleted, semantics are 'exclude', allowing 'include' later.
+		   liststore.pop() actually removes a row with no 'changed' notication"""
+		self._deleted |= power2(row)
+		self.changed[0] |= power2(row) # trigger rows_changed flag
+		
+	def undelete(self, row ):
+		
+		self._deleted &= ~power2(row)
+		self.changed[0] |= power2(row)  	
 	
 	def resolve_defaults(self, in_list:list) -> list:
 	
@@ -191,10 +250,10 @@ class ListStore(object):
 	def check_slot(self, slot:int):
 	
 		if slot < 0:
-			raise ListStoreError(f'Slot number {slot} must greater than 0.')
+			raise ListStoreError('Slot number must greater than 0.')
 		
 		if slot > len(self.store[0]):
-			raise ListStoreError(f'Slot number {slot} is greater than length of ListStore.')
+			raise ListStoreError('Slot number given is greater than length of ListStore.')
 		
 	def slot_for_col(self, col_name:str) -> int:
 		"""slot number for column name"""
@@ -206,7 +265,7 @@ class ListStore(object):
 		
 		return index
 		
-	def get(self, slot:int, col_name:str):
+	def get(self, col_name:str, slot:int):
 		"""Get single slot from a column."""
 	
 		self.check_slot(slot)
@@ -221,8 +280,7 @@ class ListStore(object):
 		return [ self.store[i][slot] for i in range(len(self.slots)) ]
 		
 	def get_rows(self, int_or_list ) -> list:
-		""" make rows from access mask,
-			if int_or_list is type int, make list of bitindexes"""
+		""" make rows from access mask """
 		
 		if isinstance(int_or_list, int):
 			if int_or_list == 0:
@@ -235,13 +293,16 @@ class ListStore(object):
 			
 		return [ self.get_row(i) for i in int_list ]
 		
-	def set(self, slot:int, col_name:str, value ):
+	def set(self, col_name:str, slot:int, value ):
 		"""Set col_name (attr) in slot int to value"""
 		
 		self.check_slot(slot)
 		
 		col_slot = self.slot_for_col(col_name)
-
+		
+		# print('in super set ', col_name, col_slot, slot, value)
+		# print('in super set ', self.store)
+		
 		old_value = self.store[col_slot][slot]
 		
 		self.store[col_slot][slot] = value
@@ -335,25 +396,10 @@ class ListStore(object):
 			 
 		for i in range(len(self.slots)):
 			popped_row.append(self.store[i].pop(row))
-
-		for i in range(len(self.slots)):
-			self._changed[i] = bit_remove(self._changed[i], row)
 			
 		self.indexer.reindex()
 		
 		return popped_row
-		
-	def clear(self):
-	
-		if len(self.slots) == 0: return
-		
-		for i in range(len(self.slots)):
-			self.store[i] = []
-		
-		self.reset_changed()	
-		self._indexer = Indexer(self.slots, self.store )
-			
-		return
 				
 	def dump(self) -> list[list]:
 		"""Dump all rows as List[List] """
@@ -422,6 +468,7 @@ class TupleStore(ListStore):
 			
 		super().__init__( column_defs, defaults, *args, **kwargs)
 		
+		#print('TS init ', nt_name, self.slots )
 		self._nt_name = nt_name
 		self._ntuple_factory = namedtuple( nt_name, self.slots)
 		
@@ -642,7 +689,7 @@ if __name__ == '__main__':
 		print('Columns changed ', lstore._changed )
 		print('Rows changed   ', bin(lstore.rows_changed()) )
 		# print('Rows changed indexes ', bit_indexes(lstore.rows_changed()))
-		# print('Rows deleted   ', bin(lstore._deleted))     
+		print('Rows deleted   ', bin(lstore._deleted))     
 		
 	
 	try:
@@ -683,17 +730,16 @@ if __name__ == '__main__':
 	ls.index_attr('num_of_RPZeros')
 	nl()
 	
-	print("ls.get(2, 'name') -> ", ls.get(2 , 'name'))
-	print("ls.get(4, 'address') -> ", ls.get(4 , 'address'))
+	print("ls.get('name', 2)")
+	print(ls.get('name', 2))
 	nl()
 	
 	print("ls.set('address', 4, '367 SomeWhere')")
-	ls.set(4, 'address', '367 SomeWhere')
-	print("ls.get(4, 'address') ->", ls.get(4 , 'address'))
+	ls.set('address', 4, '367 SomeWhere')
 	nl()
 	
-	print("ls.set(2, 'num_of_RPZeros', 27)")
-	ls.set(2, 'num_of_RPZeros', 27)
+	print("ls.set('num_of_RPZeros', 2, 27)")
+	ls.set('num_of_RPZeros', 2, 27)
 	nl()
 
 	display_store(ls)
@@ -715,29 +761,27 @@ if __name__ == '__main__':
 		print('ERROR: Shoud be an error for no defaults')
 	nl()
 
-	'''
 	print('Delete/hide first three rows')
 	for r in [ 0, 1, 2 ]:
 		ls.delete(r)
 	nl()	
 	print('Deleted row indexes ', bit_indexes(ls.deleted))
 	nl()
-	'''
 	
-	print('Iterate Liststore')
+	print('Iterate Liststore ... filter deletes')
 	nl()
 	for i, r in enumerate(iter(ls)):
 		print('row ', i, r)
 	nl()
 	
-	print('Dump ListStore ')
+	print('Dump ListStore ... no filter of deletes')
 	nl()
 	for ll in ls.dump():
 		print(ll)
 	nl()
 	
-	print('pop 0, 1 ,2 ')
-	for i in bit_indexes(3):
+	print('pop deletes ')
+	for i in bit_indexes(ls.deleted):
 		print('popping', i, ' -> ', ls.pop(i))
 	nl()
 		
@@ -977,14 +1021,6 @@ if __name__ == '__main__':
 		print(tp)
 	nl()
 	print('End of Test')
-	nl()
-
-
-	print('ntstore.length ', ntstore.length )
-	print('Clearing ... ')
-	ntstore.clear()
-	print('ntstore.length ', ntstore.length )
-	display_store(ntstore)
 	nl()
 	
 	if gc_present:

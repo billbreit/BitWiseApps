@@ -2,8 +2,11 @@
  should work with both Python and micropython, except for py_bit_length,
   roughly 10X faster than Python versions, so far. Python's log2 comes off
   pretty well. power2 is the big winner ( ints only ).  logar2_hybrid seems
-  to break the 2^127 barrier.  bin() is fast on Py39 but very slow on mpy platforms
-  ... keep on testing."""
+  to break the 2^127 barrier.  bin() is fast on Py39 but very slow on mpy platforms.
+  
+  Something odd about bitslice functions - they are too fast.  There must be
+  a large amount of hidden loop overhead.  The ops in big_formula_time also
+  don't quite add up ... keep on testing."""
 
 import time
 
@@ -17,9 +20,19 @@ except:
     from dev.utils import fix_paths
 fix_paths()
     
+try:
+    from bitlogic import genrandint
+except:
+    from dev.bitlogic import genrandint
+    
+try:
+    x = (2).bit_length()
+    py_bitlen_avail = True
+except:
+    py_bitlen_avail = False
 
-
-from dev.bitlogic import genrandint
+    
+nl = print
 
 """
 
@@ -67,26 +80,29 @@ def timer(func, repeat=1):
 
 print()
 
-"""Note that each these factors ( scale, density, num_elements ) effect most python runtimes
-   more or less linearly by themselves, except not density in core bitwise ops where scale is
-   more or less linear.  However, when the factor are combined into the multiplier
-   ( scale x bit_density x num of elements ), the result can be exponential.
+"""Note that each these factors ( scale, density, num_elements ) effect most python
+   runtimes are more or less linearly by themselves. Bit density in core bitwise ops
+   is more or less linear.  However, when the factor are combined into the multiplier
+   ( scale x bit_density x num of elements ), the result can be exponential.  The
+   bit_indexes functions are exponential for scale x bit_density.  On the other hand,
+   the bit_insert and bit_remove functions are almost invariant to scale x bit_density
+   in 2^200 scale ints. 
    
-   There is also signifcant performance hurtle for operations requiring float conversion (pow/log2)
-   in addition to the hard limit of float(2^127) in mpy.
+   There is also signifcant performance hurtle for builtin operations requiring float
+   conversion (pow/log2), in addition to the hard limit of float(2^127) in mpy.
    """
    
 scale = 200   # creates 2^scale integers, mpy log blowup at 2^127
 bit_density = 20  # density of bits, mainly for bit_indexes testing
 num_of_elements = 100
-inner_repeat = 100
+inner_repeat = 10
 assert num_of_elements >= inner_repeat, "Repeat must be less than num elements."
 
 
 
 
 MPY_MAX_POWER = 127
-MPY_MAX_VALUE = math.pow(2,127)
+MPY_MAX_VALUE = math.pow(2, 127)
 
 print('scale ', scale )
 print('bit density ', bit_density)
@@ -133,6 +149,12 @@ def big_div_time(n):
     for i in range(n): 
         for j in range(num_of_elements): 
             x = big_floats[j]/randfloat
+            
+@timer
+def big_formula_time(n): 
+    for i in range(n): 
+        for j in range(num_of_elements): 
+            x = (big_floats[j]*(randfloat+i)/(big_floats[j]+(randfloat*i)-n))
 
             
 def build_powersof2(number_of_ints, scale, density=None):
@@ -178,6 +200,129 @@ def rshift_time(n):
     for i in range(n): 
         for j in range(num_of_elements): 
             x = powersof2[j] >> j
+
+def bit_length(bint:int):
+    """bit_length_alt in bitlogic.py.  Slow, log2 5x faster,
+       but mpy int to float infinity error at 2**127 """
+       
+    if bint == 0:
+        return 1 # unlike Py bit_length()
+            
+    blen = 0
+    while bint > 0:
+        bint >>= 1
+        blen += 1
+    return blen
+    
+def bit_length_shift(bint:int):
+    """bit_length_alt in bitlogic.py.  Slow, log2 5x faster,
+       but mpy int to float infinity error at 2**127 """
+       
+    if bint == 0:
+        return 1 # unlike Py bit_length()
+            
+    blen = 0
+    while (bint >> blen) > 0:
+        blen += 1
+    return blen
+
+def bit_length_chunk(bint:int, chunk_size:int = 12):
+    """like above with chunking, chunk_size=12 from T&E """
+    
+    blen = 0
+    chunk = 2**chunk_size
+    
+    while bint > chunk:
+        bint >>= chunk_size
+        blen += chunk_size
+        
+    while bint > 0:
+        bint >>= 1
+        blen += 1
+        
+    return blen
+            
+def bit_length_time(n):
+    for i in range(1, n): 
+        for j in range(1,num_of_elements): 
+            x = bit_length(powersof2[j])
+            
+def bit_length_shift_time(n):
+    for i in range(1, n): 
+        for j in range(1,num_of_elements): 
+            x = bit_length_shift(powersof2[j])
+            
+def bit_length_chunk_time(n):
+    for i in range(1, n): 
+        for j in range(1,num_of_elements): 
+            x = bit_length_chunk(powersof2[j])
+             
+def bit_length2( bint ):
+    """math.log(2**128, 2) -> infinity"""
+
+           
+    if bint == 0:
+        return 1 # unlike Py bit_length()
+    
+    lb = math.log2(bint)
+    lbi = int(lb)  # can't convert inf to int
+    if lb == lbi: 
+            return lbi+1
+    return math.ceil(lb)
+
+def bit_length3( bint ):
+    """math.log(2**128, 2) -> infinity"""
+
+           
+    if bint == 0:
+       return 1 # unlike Py bit_length()
+       
+    return math.floor(math.log2(bint))
+
+def bit_length_logar_hybrid( bint ):
+    """math.log(2**128, 2) -> infinity"""
+
+           
+    if bint == 0:
+       return 1 # unlike Py bit_length()
+       
+    return logar2_hybrid(bint) + 1
+
+
+def bit_length2_time(n):
+    for i in range(1, n): 
+        for j in range(1,num_of_elements): 
+            x = bit_length2(powersof2[j])
+
+            
+def bit_length_logar_hybrid_time(n):
+    for i in range(1, n): 
+        for j in range(1,num_of_elements): 
+            x = bit_length3(powersof2[j])
+            
+def bit_length_logar_hybrid_time(n):
+    for i in range(1, n): 
+        for j in range(1,num_of_elements): 
+            x = bit_length_logar_hybrid(powersof2[j])
+
+            
+def bit_length_bin(bint:int):
+    """Kludgy looking, works fast on py39 but slow on mpy.
+       arg 0 even returns len = 1, unlike Python"""
+    
+    return len(bin(bint)[2:])
+
+def bit_length_bin_time(n):
+    for i in range(1, n): 
+        for j in range(1,num_of_elements): 
+            x = bit_length_bin(powersof2[j])
+
+            
+def py_bit_length_time(n):
+    for i in range(1, n): 
+        for j in range(1,num_of_elements): 
+            x = powersof2[j].bit_length()
+            
             
 # @timer()
 def pow2_time(n):
@@ -245,115 +390,38 @@ def logar2_hybrid_time(n):
     for i in range(1, n): 
         for j in range(num_of_elements): 
             x = logar2_hybrid(powersof2[j])
-    # print('lht ',  i, j, x )
-            
-def bit_length(bint:int):
-    """bit_length_alt in bitlogic.py.  Slow, log2 5x faster,
-       but mpy int to float infinity error at 2**127 """
-       
-    if bint == 0:
-        return 1 # unlike Py bit_length()
-            
-    blen = 0
+
+    
+def bit_count(bint:int):
+    """Count number of bits set in a binary integer.
+       bin(x).count('1') works for x >= 0. """
+    
+    count = 0
     while bint > 0:
-        bint >>= 1
-        blen += 1
-    return blen
-
-def bit_length_chunk(bint:int, chunk_size:int = 12):
-    """like above with chunking, chunk_size=12 from T&E """
-    
-    blen = 0
-    chunk = 2**chunk_size
-    
-    while bint > chunk:
-        bint >>= chunk_size
-        blen += chunk_size
+        bint &= bint - 1
+        count += 1
         
-    while bint > 0:
-        bint >>= 1
-        blen += 1
+def bit_count_time(n):
+    
+    for i in range(1, n): 
+        for j in range(num_of_elements):
+            x = bit_count(powersof2[j])
+
+def bit_count_bin(bint:int):
+    """Count number of bits set in a binary integer.
+       bin(x).count('1') works for x >= 0. """
+    
+    return bin(bint)[2:].count('1')
+
         
-    return blen
-            
-def bit_length_time(n):
-    for i in range(1, n): 
-        for j in range(1,num_of_elements): 
-            x = bit_length(powersof2[j])
-            
-def bit_length_chunk_time(n):
-    for i in range(1, n): 
-        for j in range(1,num_of_elements): 
-            x = bit_length_chunk(powersof2[j])
-             
-def bit_length2( bint ):
-    """math.log(2**128, 2) -> infinity"""
-
-           
-    if bint == 0:
-        return 1 # unlike Py bit_length()
+def bit_count_bin_time(n):
     
-    lb = math.log2(bint)
-    lbi = int(lb)  # can't convert inf to int
-    if lb == lbi: 
-            return lbi+1
-    return math.ceil(lb)
-
-def bit_length3( bint ):
-    """math.log(2**128, 2) -> infinity"""
-
-           
-    if bint == 0:
-       return 1 # unlike Py bit_length()
-       
-    return math.floor(math.log2(bint))
-
-def bit_length4( bint ):
-    """math.log(2**128, 2) -> infinity"""
-
-           
-    if bint == 0:
-       return 1 # unlike Py bit_length()
-       
-    return logar2_hybrid(bint) + 1
-
-
-def bit_length2_time(n):
     for i in range(1, n): 
-        for j in range(1,num_of_elements): 
-            x = bit_length2(powersof2[j])
-
-            
-def bit_length3_time(n):
-    for i in range(1, n): 
-        for j in range(1,num_of_elements): 
-            x = bit_length3(powersof2[j])
-            
-def bit_length4_time(n):
-    for i in range(1, n): 
-        for j in range(1,num_of_elements): 
-            x = bit_length4(powersof2[j])
-
-            
-def bit_length_bin(bint:int):
-    """Kludgy looking, works fast on py39 but slow on mpy.
-       arg 0 even returns len = 1, unlike Python"""
-    
-    return len(bin(bint)[2:])
-
-def bit_length_bin_time(n):
-    for i in range(1, n): 
-        for j in range(1,num_of_elements): 
-            x = bit_length_bin(powersof2[j])
-
-            
-def py_bit_length_time(n):
-    for i in range(1, n): 
-        for j in range(1,num_of_elements): 
-            x = powersof2[j].bit_length()
+        for j in range(num_of_elements):
+            x = bit_count_bin(powersof2[j])
             
 
-def bit_indexes_logar(bint:int):
+def bit_indexes_logar_hybrid(bint:int):
     """Make list of ints for indexes of bits that are set. Indexes are
        essentially the same as base-2 exponents.
        For example: bitIndexes(23) => [0, 1, 2, 4]
@@ -365,16 +433,21 @@ def bit_indexes_logar(bint:int):
     save_bint = bint
     
     while bint > 0:
-        index = logar2_hybrid(bint)
+        index = logar2_hybrid(bint)  # top bit
         bint &= (1<<index) - 1
         bit_indexes.insert(0, index)
-    
+        # bit_indexes.append(index)
+
+    # return bit_indexes.sort()
     return bit_indexes
 
-def bit_indexes_logar_time(n):
+
+def bit_indexes_logar_hybrid_time(n):
     for i in range(1, n): 
         for j in range(1,num_of_elements): 
-            x = bit_indexes_logar(powersof2[j])
+            x = bit_indexes_logar_hybrid(powersof2[j])
+            
+
             
 def bit_indexes_brute(bint:int):
     """Make list of ints for indexes of bits that are set. Indexes are
@@ -407,40 +480,92 @@ def bit_indexes_bin_time(n):
     for i in range(1, n): 
         for j in range(1,num_of_elements): 
             x = bit_indexes_bin(powersof2[j])
-           
+            
+def bit_indexes_bin_time(n):
+    for i in range(1, n): 
+        for j in range(1,num_of_elements): 
+            x = bit_indexes_bin(powersof2[j])
+            
+def bit_remove( bint, index ):
+    return (bint >> index+1 ) << index | bint & (( 1 << index)-1)
+
+    
+def bit_insert( bint, index, value=1):
+    return (((bint >> index ) << 1 ) | value ) << index | bint & (( 1 << index)-1 )
+
+def bitslice_insert(bint, index, bit_len, value ):
+    """Insert before index-th slot""" 
+   
+    return (((( bint >> index ) << bit_len) | value ) << index ) | bint & (( 1 << index )-1)
+
+
+def bit_remove_time(n):
+    for i in range(0, n): 
+        for j in range(0,num_of_elements): 
+            x = bit_remove( j, i )
+            
+        
+def bit_insert_time(n):
+    for i in range(0, n): 
+        for j in range(0,num_of_elements): 
+            x = bit_insert( j, i )
+            
+def bitslice_insert_time(n):
+    for i in range(0, n): 
+        for j in range(0,num_of_elements): 
+            x = bit_insert( j, i, 7 )
+
+print('Math and Bitwise Ops Tests')
+nl()
+startt = time.time_ns()
         
 no_op_loop(inner_repeat)
 mult_time(inner_repeat)
 div_time(inner_repeat)
 big_mult_time(inner_repeat)
 big_div_time(inner_repeat)
+big_formula_time(inner_repeat)
 and_time(inner_repeat)
 andnot_time(inner_repeat)
 or_time(inner_repeat)
 rshift_time(inner_repeat)
 xor_time(inner_repeat)
+print()
+timer(bit_length_time, repeat=1)(inner_repeat)
+timer(bit_length_shift_time, repeat=1)(inner_repeat)
+timer(bit_length_chunk_time, repeat=1)(inner_repeat)
+# timer(bit_length2_time, repeat=1)(inner_repeat)  # blows up 2^127
+# timer(bit_length3_time, repeat=1)(inner_repeat)
+timer(bit_length_logar_hybrid_time, repeat=1)(inner_repeat)
+timer(bit_length_bin_time, repeat=1)(inner_repeat) # too slow on mpy
+if py_bitlen_avail:
+    timer(py_bit_length_time, repeat=1)(inner_repeat)
+else:
+    print('No int.bit_length() availible.')
+print()
 timer(pow2_time, repeat=1)(inner_repeat)  # too slow
 timer(power2_time, repeat=1)(inner_repeat)
 timer(log_time, repeat=1)(inner_repeat)
 timer(log2_time, repeat=1)(inner_repeat)
 # timer(logar2_time, repeat=1)(inner_repeat)  # meltdown at 2^127
 timer(logar2_hybrid_time, repeat=1)(inner_repeat)
-timer(bit_length_time, repeat=1)(inner_repeat)
-timer(bit_length_chunk_time, repeat=1)(inner_repeat)
-# timer(bit_length2_time, repeat=1)(inner_repeat)  # blows up 2^127
-# timer(bit_length3_time, repeat=1)(inner_repeat)
-timer(bit_length4_time, repeat=1)(inner_repeat)
-timer(bit_length_bin_time, repeat=1)(inner_repeat) # too slow on mpy
-timer(bit_indexes_logar_time, repeat=1)(inner_repeat)  
+timer(bit_count_time, repeat=1)(inner_repeat)
+timer(bit_count_bin_time, repeat=1)(inner_repeat)
+print()
+timer(bit_indexes_logar_hybrid_time, repeat=1)(inner_repeat)  
 timer(bit_indexes_brute_time, repeat=1)(inner_repeat)  # slowerr than logar
 timer(bit_indexes_bin_time, repeat=1)(inner_repeat)  # faster than brute on py, way slow on mpy
-try:
-    x = (2).bit_length()
-    py_bitlen_avail = True
-    timer(py_bit_length_time, repeat=1)(inner_repeat)
-except:
-    py_bitlen_avail = False
-    print('No int.bit_length() available.')
+print()
+timer(bit_remove_time, repeat=1)(inner_repeat) 
+timer(bit_insert_time, repeat=1)(inner_repeat)
+timer(bitslice_insert_time, repeat=1)(inner_repeat) 
+
+    
+endt = time.time_ns()
+
+print()
+print('Total run time (ms): ', (endt-startt)/scale_msec)
+print()
     
 # for i in [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ,15, 16 , 9999, 3773344]:
 #for i in powersof2:

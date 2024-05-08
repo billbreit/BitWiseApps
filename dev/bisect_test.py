@@ -1,7 +1,11 @@
 
 """Works on MicroPython """
 
-import bisect
+try:
+    import bisect
+except:
+    import dev.bisect as bisect
+    
 from dev.bitlogic import bit_length, bit_length_alt
 from gc import mem_free, mem_alloc
 

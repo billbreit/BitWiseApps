@@ -13,20 +13,30 @@ try:
 except:
     odict_avail = False
     
-if __name__ == '__main__':  # not imported, fix up to importer
-    try:
-        from utils import fix_paths
-    except:
-        from dev.utils import fix_paths
-    fix_paths()
+    
 
-from dev.bitlogic import bit_indexes
+
+try:
+    from bitlogic import bit_indexes, power2
+    from .ulib.bitops import bit_remove
+except:
+    from dev.bitlogic import bit_indexes, power2, bit_length
+
+def bit_remove(bint:int, index:int) -> int:
+
+    if bint < 0: return None  # error
+    if index < 0 or index > bit_length(bint)-1: return bint
+
+    return (bint >> index+1 )<< index | bint&(1<<index)-1
 
 nl = print
 
 DELETED = namedtuple('DELETED', [] )
 
-# class VolatileDict(OrderedDict):
+class VolatileDictException(Exception):
+    pass
+
+# class VolatileDict(OrderedDict):   # preserves load order for dict([tuplepairs])
 class VolatileDict(dict):   # faster, OrderedDict may not be availible
     """ Volatile Dictionary, tracks keys of changed items for notification/synching.
     
@@ -45,6 +55,11 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
         super().__init__(*args, **kwargs)
         self.changed = 0
         self.vkeys = []
+        if len(args) > 0:
+            if isinstance(args[0], dict):
+                raise  VolatileDictException(f'Create Error - can only create vdict from tuple pairs.')
+            self.vkeys = [ kv[0] for kv in args[0] ]
+            self.changed |= power2(len(args[0]))-1
         
     def __setitem__(self, key, value ):
         """ Track changed items """
@@ -52,20 +67,38 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
         super().__setitem__(key, value)
         if key not in self.vkeys:
             self.vkeys.append(key)
-        self.changed |= pow(2, self.vkeys.index(key))
+        self.changed |= power2(self.vkeys.index(key))
      
     def __delitem__(self, item):
         """ Not useful for volatile dict, set value to None or DELETED"""
         raise NotImplementedError
+        
+    def __str__(self):
+        
+        ss = self.__class__.__name__ + '({'
+        kvs = [ repr(k) + ': ' + repr(v)  for k, v in self.items()]
+        ss += ', '.join(kvs)
+        ss += '})'
+        return ss
     
     def pop(self, key):
-        """ Not useful for volatile dict, set value to None or DELETED"""
-        raise NotImplementedError
-    
+        """ Can be used, but not really useful for volatile dict, with reader/writer
+            relationships.  Set value to DELETED"""
+        if key not in self:
+            raise  VolatileDictException(f'Key Pop Error: key {key} not found. No delete.')
+        
+        item = super().pop(key)
+        index = self.vkeys.index(key)
+        self.vkeys.pop(index)
+        self.changed = bit_remove(self.changed, index)
+        
+        return item
+
+
     def popitem(self):
         """ Not useful for volatile dict, set value to None or DELETED"""
         raise NotImplementedError
-  
+   
     def update(self, otherdict):
         """Simple ( and slow ) implementation for upython by forcing __setitem__ """
         
@@ -77,24 +110,20 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
         
     def reset(self, key=None):
         if key:
-            self.changed &= ~pow(2, self.vkeys.index(key))
+            self.changed &= ~power2(self.vkeys.index(key))
         else:
             self.changed = 0
         
     def keys_changed(self):
         
-        ichanged = bit_indexes(self.changed)
-
-        kchanged = [self.vkeys[i] for i in ichanged]
-                
-        return kchanged
+        return [self.vkeys[i] for i in bit_indexes(self.changed)]
         
     def fetch(self, keylist=None ):
         """ Get list of key, reset and return list of items """ 
         
         if not keylist: return []
             
-        if isinstance(keylist, str): keylist = [keylist]
+        if not isinstance(keylist, list): keylist = [keylist]
   
         itemlist = [ self[key] for key in keylist ]
                             
@@ -106,7 +135,6 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
         "Ensures insert order, for mpython" 
         return [(k, self[k]) for k in self.vkeys]
     
-    @property
     def keys(self):
         return self.vkeys
     
@@ -171,8 +199,8 @@ if __name__=='__main__':
 
     print('key, index of name in vkeys, binary mask for changed int, ')
     nl()
-    for k in vd.keys:
-        print( 'Index of ', k, ' is ', vd.vkeys.index(k), ' with changed mask', bin(pow(2, vd.vkeys.index(k))))
+    for k in vd.keys():
+        print( 'Index of ', k, ' is ', vd.vkeys.index(k), ' with changed mask', bin(power2(vd.vkeys.index(k))))
     nl()
     
     
@@ -213,19 +241,34 @@ if __name__=='__main__':
     vd['d'] = [ 1, 2, 3]
     vd['c'] = DELETED
     
-    print('vd ( raw dict, not vdict.keys) ')
-    print(vd)
+    print('vd using __str__')
+    print(str(vd))
     nl()
     print("vd['c'] == DELETED ", vd['c'] == DELETED)
+    nl()
+    
+    print("pop 'c' with returned value: ", vd.pop('c'))
+    print("'c' in vdict: ", 'c' in vd)
+    nl()
+    try:
+        print("Trying pop('x')")
+        v = vd.pop('x')
+    except Exception as e:
+        print(e)
+    nl()
+    
+    print("'a' in vdict    :", 'a' in vd)
+    print("'x' not in vdict:", 'x' not in vd ) 
     nl()
     
     print('len(vdict) ', len(vd))
     print("vdict.get('a')         ", vd.get('a'))
     print("vdict.get('xxx', None) ", vd.get('xxx', None))
-    print('vdict.keys  ', vd.keys)
+    print('vdict.keys  ', vd.keys())
     print('vdict.items ', vd.values)
     nl()
-    
+
+    """
     print('Exceptions')
     nl()
     try:
@@ -241,9 +284,10 @@ if __name__=='__main__':
     try:
         x = vd.popitem()
     except NotImplementedError:
-        print('Error: popitem NotImplementedError') 
-
-       
+        print('Error: popitem NotImplementedError')
+    """ 
+        
+     
  
     # print('str ', vd.__str__())    # not pretty, blows up mpy
     # print('repr ', vd.__repr__())  # not pretty, blows up mpy
@@ -254,14 +298,45 @@ if __name__=='__main__':
     del(vd)
 
     try:
-        x = vd['a']
+        x = vd.items()
     except:
-        print("It's gone ...")
+        print("It's gone ... almost.")
 
     nl()
-
+     
+  
+    
+    vdvals = [ (k, i) for i, k, in enumerate(['a','b','c','d','e','f','g','h'])]
+    
+    print('Test for MicroPython, note key order of dict vs. OrderedDict')
+    nl()
+    print('kv tuple pairs ', vdvals)
+    print('dict(vdvals) ', dict(vdvals))
+    od =  OrderedDict(vdvals)
+    print('OrderedDict(vdvals) ', od)
+    vd = VolatileDict(vdvals)
+    nl()
+    print('New VDict from kv-pairs')
+    checkstats(vd)
+    nl()
+    print('Fetch changed values')
+    vals = vd.fetch(vd.keys_changed())
+    print('values fetched ', vals)
+    nl()
+    checkstats(vd)
+    nl()
+    print('VDict(vdvals)      ', vd)
+    print('VDict.keys() ', vd.keys())
+    print('VDict.items() ', vd.items())
+    print('ODict.items() ', od.items())
+    print('VDict.__class__ ', vd.__class__)
+    print('VDict.__class__.__name__ ', vd.__class__.__name__)
+    # print('VDict.__qualname__ ', vd.__qualname__)     # not Python 3.9
 
     # print(locals())
+    
+
+    
     
 
     
