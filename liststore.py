@@ -1,13 +1,19 @@
 """
-liststore - a column-oriented data store using a generalized list of lists structure, 
-with the usual list-like operations.
-
 module:     liststore
 version:    v0.4.1
 sourcecode: https://github.com/billbreit/BitWiseApps
 copyleft:   2024 by Bill Breitmayer
 licence:    GNU GPL v3 or above
 author:     Bill Breitmayer
+
+liststore - a column-oriented data store using a generalized list of lists structure, 
+with typical list-like operations. For *small datasets*, maybe a few hundred rows,
+especially on limited memory micro-controllers.
+           
+ - an indexing store for tuples. Note that indexer can consume 
+   large amounts of memory and too memory-intensive for a 256K class platform.
+   
+ - a cross-platform version of namedlist.py, when Python dataclass is not available.
 
 For example, a structure for column_defs ['name', 'address', 'phone']:
 
@@ -23,21 +29,13 @@ ls._store = [['Bob', 'Mary', 'Sue'],
              ['733 Main Street', '22 Any Avenue', '11 My Way'],
              ['123-456-7890', '222-444-6666', '123-456-7890' ]]
              
-ls.get(1, 'address' ) would return '22 Any Avenue'              
-             
-          
-ls.get_row( 0 ) would return ['Bob', '733 Main Street', '123-456-7890']
-         
-           
- - an indexing store for tuples. Note that indexer can consume 
-   large amounts of memory and too memory-intensive for a 256K class platform.
-   
- - a cross-platform version of namedlist.py, when Python dataclass is not available.
- 
+ls.get(1, 'address' ) would return '22 Any Avenue'
+ls.set(0, 'address', '999 Any Avenue' ) would set Bob's address.
+        
+ls.get_row( 0 ) would return ['Bob', '999 Any Avenue', '123-456-7890']
+
 Known to run on Python 3.9, micropython v1.20-22 on a Pico and Arduino Nano ESP32. 
 
-
-	
 """
 
 try:
@@ -57,7 +55,7 @@ from collections import namedtuple
 
 from math import log, floor, ceil
 
-from ulib.getset import itemgetter
+# from ulib.getset import itemgetter
 from ulib.bitops import power2, bit_indexes, bitslice_insert, bit_remove
 
 
@@ -93,55 +91,34 @@ class ListStore(object):
 			
 		super().__init__()
 		
-		self._slots = column_names
-		self._defaults = defaults or []
+		self.col_names = column_names
+		self.defaults = defaults or []
 		
-		self._store = []
+		self.store = []
 			
-		for i in range(len(self._slots)):
-			self._store.append([])
+		for i in range(len(self.col_names)):
+			self.store.append([])
 		
-		self._changed = [ 0 for i in range(len(self.slots))]  # list[int] for each column
-		self._indexer = Indexer(self.slots, self.store )
+		self.changed = [ 0 for i in range(len(self.col_names))]  # list[int] for each column
+		self.indexer = Indexer(self.col_names, self.store )
 		
-	def __iter__(self):
+	def __iter__(self) -> list[list]:
 		"""Yeild columns as list of lists, an iterator over rows."""
 
-		yield from [ list(row) for i, row in enumerate(zip(*(self._store))) ]
+		yield from [ list(row) for i, row in enumerate(zip(*(self.store))) ]
 		
 	@property
-	def length(self):
-		return len(self._store[0])
+	def length(self) -> int:
+		return len(self.store[0])
 	
-	@property
-	def slots(self):
-		return self._slots
-	
-	@property
-	def defaults(self):
-		return self._defaults
-	
-	@property
-	def store(self):
-		return self._store
-		
-	@property
-	def changed(self) -> int:
-		return self._changed
-	
-	'''	
-	@property
-	def deleted(self) -> int:
-		return self._deleted
-	'''
 		
 	def rows_changed(self) -> int:
 		"""Return column mask of rows changed, by ORing in each
 		   column changed mask yielding rows changed."""
 	
 		rc = 0
-		for i in range(len(self.slots)):
-			rc |= self._changed[i]
+		for i in range(len(self.col_names)):
+			rc |= self.changed[i]
 		
 		return rc
 		
@@ -150,35 +127,35 @@ class ListStore(object):
 		   back from the return of rows_changed(). The values are then 
 		   store[col][row1...col_len]"""
 		   
-		column_indexes = [ i for i in range(len(self.slots)) if power2(row) & self._changed[i]]
+		column_indexes = [ i for i in range(len(self.col_names)) if power2(row) & self.changed[i]]
 		
 		return column_indexes
 
-	def reset_changed_row(self, slot:int):
-		"""Implies single reader, may need reset_changed_slot for multiple readers"""
-		for i in range(len(self.slots)):
-			self._changed[i] &= ~power2(slot)
-			
 		
-	def reset_changed(self):
-		"""Implies single reader, may need reset_changed_slot for multiple readers"""
-		for i in range(len(self.slots)):
-			self._changed[i] = 0
-	
+	def reset_changed(self, slot:int=None):
+		"""Reset changed mask for row slot or if slot is None, reset changed for all columns. """
+		
+		if slot: self.check_slot(slot)
+		
+		for i in range(len(self.col_names)):
+			if slot is not None:
+				self.changed[i] &= ~power2(slot)			
+			else:
+				self.changed[i] = 0
 	
 	def resolve_defaults(self, in_list:list) -> list:
 	
-		if len(in_list) == 0 or len(in_list) > len(self.slots):
-			raise ListStoreError('Input length must greater than zero and less than/equal to len(slots).')
+		if len(in_list) == 0 or len(in_list) > len(self.col_names):
+			raise ListStoreError('Input length must greater than zero and less than/equal to len(col_names).')
 			
-		if len(in_list) == len(self.slots):
+		if len(in_list) == len(self.col_names):
 				return in_list
 	
 		ilist = list(in_list)
 		
-		if len(self.defaults)+len(ilist) >= len(self.slots):
+		if len(self.defaults)+len(ilist) >= len(self.col_names):
 
-			defs_needed = len(self.slots)-len(ilist)
+			defs_needed = len(self.col_names)-len(ilist)
 			dlist = self.defaults[-defs_needed:]
 			
 			for d in dlist: 
@@ -200,7 +177,7 @@ class ListStore(object):
 		"""slot number for column name"""
 		
 		try:
-			index = self.slots.index(col_name)
+			index = self.col_names.index(col_name)
 		except:
 			return -1
 		
@@ -211,16 +188,22 @@ class ListStore(object):
 	
 		self.check_slot(slot)
 		
-		return self.store[self.slot_for_col(col_name)][slot]
+		return self.get_column(col_name)[slot]
+		
+	def get_column(self, col_name:str ) -> list:
+		"""Return a list of values for 'col_name'. """
+	
+		return self.store[self.slot_for_col(col_name)]
+		
 		
 	def get_row(self, slot:int) -> list:
 		"""Get a row, across all columns."""
 	
 		self.check_slot(slot)
 
-		return [ self.store[i][slot] for i in range(len(self.slots)) ]
+		return [ self.store[i][slot] for i in range(len(self.col_names)) ]
 		
-	def get_rows(self, int_or_list ) -> list:
+	def get_rows(self, int_or_list ) -> list[list]:
 		""" make rows from access mask,
 			if int_or_list is type int, make list of bitindexes"""
 		
@@ -248,7 +231,7 @@ class ListStore(object):
 		
 		self.indexer.update_index( col_name, slot, old_value, value)
 		
-		self._changed[col_slot] |= power2(slot) 
+		self.changed[col_slot] |= power2(slot) 
 
 			
 	def append( self, in_list:list=None ):
@@ -274,7 +257,7 @@ class ListStore(object):
 			self.store[i].append(v)
 			
 		for i in range(len(ilist)):
-			self._changed[i] |= power2(len(self.store[0])-1)
+			self.changed[i] |= power2(len(self.store[0])-1)
 				
 		if self.indexer.index:
 			self.indexer.append_index(ilist)
@@ -316,7 +299,7 @@ class ListStore(object):
 			
 		for i in range(len(self.store)):
 			# insert to the right of last bit index + 1 
-			self._changed[i] = bitslice_insert( self._changed[i],
+			self.changed[i] = bitslice_insert( self.changed[i],
 												save_top, 
 												len(list_of_lists),
 												(1 << ( len(list_of_lists)))-1 )
@@ -325,7 +308,7 @@ class ListStore(object):
 			self.indexer.extend_index(list_of_lists)
 
 			
-	def pop(self, row:int ):
+	def pop(self, row:int ) -> list:
 		""" Remove slots in liststore for a given row, and reindex from scratch
 			to guarantee bitmask references, probably very slow, maybe several
 			hundred milliseconds (?) """
@@ -333,38 +316,39 @@ class ListStore(object):
 		popped_row = [] 
 		self.check_slot(row)
 			 
-		for i in range(len(self.slots)):
+		for i in range(len(self.col_names)):
 			popped_row.append(self.store[i].pop(row))
 
-		for i in range(len(self.slots)):
-			self._changed[i] = bit_remove(self._changed[i], row)
+		for i in range(len(self.col_names)):
+			self.changed[i] = bit_remove(self.changed[i], row)
 			
-		self.indexer.reindex()
+		# self.indexer.reindex()
+		self.indexer.pop_index(row)  # may be faster ?
 		
 		return popped_row
 		
 	def clear(self):
 	
-		if len(self.slots) == 0: return
+		if len(self.col_names) == 0: return
 		
-		for i in range(len(self.slots)):
+		for i in range(len(self.col_names)):
 			self.store[i] = []
 		
 		self.reset_changed()	
-		self._indexer = Indexer(self.slots, self.store )
+		self.indexer = Indexer(self.col_names, self.store )
 			
 		return
 				
 	def dump(self) -> list[list]:
 		"""Dump all rows as List[List] """
-		return [ list(row) for row in zip(*(self._store))]
+		return [ list(row) for row in zip(*(self.store))]
 		
 		
 	def find( self, col_name:str, value, start=0 ) -> int:
 		"""Return the first row number for match value in column. """
 
 		try:
-			i = self.store[self.slot_for_col(col_name)].index(value, start)
+			i = self.get_column(col_name).index(value, start)
 		except ValueError as ve:
 			i = -1
 	
@@ -390,22 +374,20 @@ class ListStore(object):
 		
 	""" Index Methods """
 	
-	@property
-	def indexer(self):
-		return self._indexer
+
 
 	@property
 	def index(self) -> dict:
-		return self._indexer.index
+		return self.indexer.index
 
 	def index_attr(self, attr_name:str):
 		"""Create new index for attr.column name"""
 		
-		self._indexer.index_attr(attr_name)
+		self.indexer.index_attr(attr_name)
 		
 	def reindex(self):
 		""" Rebuild entire index, may be slow for large store """
-		self._indexer.reindex()
+		self.indexer.reindex()
 		
 
 
@@ -422,62 +404,39 @@ class TupleStore(ListStore):
 			
 		super().__init__( column_defs, defaults, *args, **kwargs)
 		
-		self._nt_name = nt_name
-		self._ntuple_factory = namedtuple( nt_name, self.slots)
+		self.nt_name = nt_name
+		self.ntuple_factory = namedtuple( nt_name, self.col_names)
 		
-	def __iter__(self):
+	def __iter__(self) -> list[tuple]:
 		"""Yeild columns as list of lists, an iterator over rows."""
 		
-		yield from [ self._ntuple_factory(*row) for row in zip(*(self._store))]
+		yield from [ self.ntuple_factory(*row) for row in zip(*(self.store))]
 		
-	@property
-	def nt_name(self):
-		return self._nt_name
-	
-	@property   
-	def ntuple(self) -> tuple:
-		"""Return tuple_factory, no defaults"""
-		return self._ntuple_factory
 		
-	def make_namedtuple( self, tup_values ):
-		"""Make tuple with defaults, according to spec."""
+	def make_namedtuple( self, tup_values:list ) -> tuple:
+		"""Make tuple with defaults according to spec., then return, no update."""
 
 		tp = self.resolve_defaults(tup_values)
-		return self._ntuple_factory(*tp)
+		return self.ntuple_factory(*tp)
 		
 	def get_row(self, slot:int) -> tuple:
+		""" Get row using slot, return namedtuple. """
 		row = super().get_row(slot)
-		return self._ntuple_factory(*row)
+		return self.ntuple_factory(*row)
 		
 	def get_rows(self, int_or_list ) -> list:
 	
-		return [self._ntuple_factory(*r) for r in super().get_rows(int_or_list)]
+		return [self.ntuple_factory(*r) for r in super().get_rows(int_or_list)]
 		
 	def pop(self, slot:int ) -> tuple:
 		""" pop slot number """
 		
 		popped_list = super().pop(slot)
-		return self._ntuple_factory(*popped_list)
-			
-	def make_tuple(self, slot ) -> tuple:
-	
-		val_tuple = [self._store[i][slot] for i in range(len(self.slots))]
-			
-		return  self._ntuple_factory(*tuple(val_tuple))
+		return self.ntuple_factory(*popped_list)
+
 		
-	def make_tuples(self, mask:int ) -> list[tuple]:
-		""" make tuples from access mask """
-	
-		n_tuples = []
-		
-		if mask == 0: return n_tuples
-		
-		n_tuples = [self.make_tuple(i) for i in range(len(self.store[0])) if mask & power2(i) >= 1 ] 
-						
-		return  n_tuples
-		
-	def dump(self):
-		return [ self._ntuple_factory(*tup) for tup in zip(*tuple(self._store))]
+	def dump(self) -> list[tuple]:
+		return [ self.ntuple_factory(*tup) for tup in zip(*tuple(self.store))]
 		
 
 
@@ -486,19 +445,19 @@ class IndexerError(Exception):
 
 class Indexer(object):
 
-	def __init__(self, slots:list=None, store:list=None, usertypes=None, *args, **kwargs ):
+	_indexable = [ str, int, tuple, type(None) ]
+
+	def __init__(self, col_names:list=None, store:list=None, usertypes=None, *args, **kwargs ):
 	
 		super().__init__( *args, **kwargs)
 		
-		if slots == None or len(slots) == 0:
+		if col_names == None or len(col_names) == 0:
 			raise IndexerError('A list of column keys must provided to Indexer.') 
 		
-		self._slots = slots
+		self._slots:list[str] = col_names
 		self._store = store or []  # empty liststore means class methods only       
-		self._index = {}
+		self._index:dict = {}
 		self._indexed = []  # list of columns actually indexed, using index_attr()
-		
-		self._indexable = [ str, int, tuple, type(None) ]
 		
 		if usertypes:
 			self._indexable.extend( usertypes )
@@ -509,7 +468,7 @@ class Indexer(object):
 	def index_list(cls, alist:list ) -> dict:
 		"""index values in a list or tuple"""
 		
-		col_value_set = set()
+		col_value_set = set()  # unique indexable dict keys
 		for value in alist:
 			if type(value) in cls._indexable:
 				col_value_set.add(value)
@@ -519,7 +478,7 @@ class Indexer(object):
 		for value in col_value_set:
 			sub_dict[value] = 0
 		
-		""" iterate through a column of store and add/update int bit mask
+		""" iterate through alist and add/update int bit mask
 			values in subdict """   
 			
 		for i, value in enumerate(alist):
@@ -528,8 +487,6 @@ class Indexer(object):
 					sub_dict[value] |= power2(i)
 	
 		return sub_dict
-		
-		
 	
 	@property   
 	def index( self):
@@ -537,7 +494,7 @@ class Indexer(object):
 		return self._index
 			
 		
-	def index_attr(self, attr_name):
+	def index_attr(self, attr_name:str):
 		"""Create new index for attr.column name"""
 	
 		if attr_name not in self._slots:
@@ -568,7 +525,7 @@ class Indexer(object):
 		if attr_name not in self._indexed: self._indexed.append(attr_name)
 
 		
-	def update_index(self, attr_name, row_slot, old_value, new_value):
+	def update_index(self, attr_name:str, row_slot:int, old_value, new_value):
 		"""An altered row via set().  Need to unset bit on old value and
 		   set bit for new value."""
 	
@@ -585,11 +542,9 @@ class Indexer(object):
 				self.index[attr_name][new_value] = 0
 			
 			self.index[attr_name][new_value] |= power2(row_slot)
-			
-      
 		
 			
-	def append_index(self, n_tuple):
+	def append_index(self, list_in:list):
 		"""New slot value, for appended row. No need to rebuild masks, just OR in new offset."""
 	
 		for col_name in self._index.keys():
@@ -597,15 +552,22 @@ class Indexer(object):
 			store_slot = self._slots.index(col_name)
 			new_slot = len(self._store[store_slot])   # current new slot
 				
-			if n_tuple[store_slot] not in self._index[col_name]:
-				self._index[col_name][n_tuple[store_slot]] = 0
+			if list_in[store_slot] not in self._index[col_name]:
+				self._index[col_name][list_in[store_slot]] = 0
 
-			self._index[col_name][n_tuple[store_slot]] |= power2(new_slot) 
+			self._index[col_name][list_in[store_slot]] |= power2(new_slot) 
 			
-	def extend_index(self, list_of_lists):
+	def extend_index(self, list_of_lists:list[list]):
 	
 		for l in list_of_lists:
 			self.append_index( l )
+			
+	def pop_index(self, row_slot:int ):
+		"""Delete one bit from masks in subdict for attr name. """
+		
+		for attr_name in self._indexed:
+			for key, value in self.index[attr_name].items():
+				self.index[attr_name][key] = bit_remove(self.index[attr_name][key], row_slot)
 		
 	def reindex( self):
 		"""build or rebuild index completely, after row pop/remove."""
@@ -618,6 +580,21 @@ class Indexer(object):
 		pass
 	
 
+def display_store( lstore ):
+	print('Store type  ', type(lstore))
+	print('Length      ', lstore.length)
+	# nl()
+	for attr, col_store in zip(lstore.col_names, lstore.store):
+		print('Column ', attr, col_store)
+	nl()
+	print('Index ')
+	for k, subdict in lstore.index.items():
+		print( k, subdict )
+	nl()
+	print('Columns changed ', lstore.changed )
+	print('Rows changed   ', bin(lstore.rows_changed()) )
+	# print('Rows changed indexes ', bit_indexes(lstore.rows_changed()))
+	# print('Rows deleted   ', bin(lstore._deleted))  
 
 				
 if __name__ == '__main__':
@@ -627,23 +604,6 @@ if __name__ == '__main__':
 	
 	if gc_present:
 		main_start = mem_free()
-		
-	def display_store( lstore ):
-		print('Store type  ', type(lstore))
-		print('Length      ', lstore.length)
-		# nl()
-		for attr, col_store in zip(lstore.slots, lstore.store):
-			print('Column ', attr, col_store)
-		nl()
-		print('Index ')
-		for k, subdict in lstore.index.items():
-			print( k, subdict )
-		nl()
-		print('Columns changed ', lstore._changed )
-		print('Rows changed   ', bin(lstore.rows_changed()) )
-		# print('Rows changed indexes ', bit_indexes(lstore.rows_changed()))
-		# print('Rows deleted   ', bin(lstore._deleted))     
-		
 	
 	try:
 		la = ListStore('BadTest')
@@ -658,6 +618,10 @@ if __name__ == '__main__':
 	nl()
 		
 	ls = ListStore(['name','address', 'phone', 'email', 'num_of_RPZeros'])
+	
+	nl()
+	print('dir(liststore) ', dir(ls))
+	nl() 
 	
 	ls_data = [[ 'Bill', '22 AnyWhere', '999-888-7777', 'billb@xxx.net', 17],
 			   [ 'Bob K.', '44 AnyWhere But Here', '222-333-4447', 'bobk@yyy.net', 4],
@@ -775,11 +739,15 @@ if __name__ == '__main__':
 	ntx = ntstore.make_namedtuple((1, 2, 3))
 	print('ntstore.make_namedtuple((1, 2, 3)) -> ', ntx ) 
 	nl()
-	print('Use ntstore.ntuple directly for a new Testing tuple, no defaults')
-
+	print('Use ntstore.ntuple_factory directly for a new Testing tuple (1, 2, 3 ), no defaults')
 	
-	mytup = ntstore.ntuple(*(1, 2, 3, None ))
-	print('ntstore.ntuple(*(1, 2, 3, None )', mytup )
+	try:
+		mytup = ntstore.ntuple_factory(*(1, 2, 3 ))
+	except Exception as e:
+		print('NT Factory Error: ', e)
+	
+	mytup = ntstore.ntuple_factory(*(1, 2, 3, None ))
+	print('ntstore.ntuple(*(1, 2, 3, None ) -> ', mytup )
 	print('type(mytup)                     ', type(mytup))
 	nl()
 	print('No update to ntstore so far , ntstore.length = ', ntstore.length)
@@ -836,6 +804,13 @@ if __name__ == '__main__':
 	display_store(ntstore)
 	nl()
 	
+	print('== Reset changed ==')
+	print('changed ', ntstore.changed, bin(ntstore.changed[0]))
+	print('ntstore.reset_changed(7)' ) 
+	ntstore.reset_changed(7)
+	print('changed ', ntstore.changed, bin(ntstore.changed[0]))
+	nl()
+	
 	print('ntstore.reset_changed()')
 	nl()
 	ntstore.reset_changed() 
@@ -878,8 +853,13 @@ if __name__ == '__main__':
 	print('=== Indexing ===')
 	nl()
 	
-	for at in ntstore.slots:
-		print('=  Indexing Attr', at, '  =')
+	print('Indexer.index_list class method')
+	idx = Indexer.index_list(['a','b','c','d', 'c', 'b', 'a'] )
+	print("List index of ['a','b','c','d', 'c', 'b', 'a']", idx)
+	nl()
+	
+	for at in ntstore.col_names:
+		print('Indexing attr :', at)
 		ntstore.index_attr(at)
 	nl()
 	
@@ -890,9 +870,9 @@ if __name__ == '__main__':
 		print( k, bin(v))
 	nl()
 	
-	nt = ntstore._ntuple_factory( 'aaa', 3434,  888, 23.7 )
+	nt = ntstore.ntuple_factory( 'aaa', 3434,  888, 23.7 )
 	
-	print('append ntstore._ntuple_factory ', nt )
+	print('append ntstore.ntuple_factory ', nt )
 	nl()
 	
 	ntstore.append(nt)
@@ -947,12 +927,9 @@ if __name__ == '__main__':
 	print('=== ListStore Queries  ===')
 	nl()
 	
-	print("ntstore.make_tuples(ntstore.index[ccc'][888]")
-	print(ntstore.make_tuples(ntstore.index['ccc'][888]))
+	print("ntstore.get_rows(ntstore.index[ccc'][888]")
+	print(ntstore.get_rows(ntstore.index['ccc'][888]))
 	nl()
-	
-	
-	# print( len(ntstore.a), len(ntstore.b), len(ntstore.c), len(ntstore.d))
 	
 	print("ntstore.index['aaa']['test1'] ", ntstore.index['aaa']['test1'])
 	print("ntstore.index['bbb']['always'] ", ntstore.index['bbb']['always'])
@@ -960,20 +937,20 @@ if __name__ == '__main__':
 	print("ntstore.index['aaa']['test1'] & ntstore.index['bbb']['always']")
 	bmask = ntstore.index['aaa']['test1'] & ntstore.index['bbb']['always']
 	print('bmask ', bin(bmask))
-	print(ntstore.make_tuples(bmask))
+	print(ntstore.get_rows(bmask))
 	nl()
 	
 	print("ntstore.index['aaa']['test1'] | ( ntstore.index['aaa']['tesxx'] & ntstore.index['ddd'][None] )")
 	bmask = ntstore.index['aaa']['test1'] | ( ntstore.index['aaa']['tesxx'] & ntstore.index['ddd'][None] )
 	print('bmask ', bin(bmask))
-	for tp in ntstore.make_tuples(bmask):
+	for tp in ntstore.get_rows(bmask):
 		print(tp)
 	nl()
 	
 	print("ntstore.index['aaa']['tesxx'] & ~ntstore.index['ddd'][None]")
 	bmask = ntstore.index['aaa']['tesxx'] & ~ntstore.index['ddd'][None]
 	print('bmask ', bin(bmask))
-	for tp in ntstore.make_tuples(bmask):
+	for tp in ntstore.get_rows(bmask):
 		print(tp)
 	nl()
 	print('End of Test')
