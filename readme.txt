@@ -1,10 +1,10 @@
 README.txt for Bill Breitmayer's BitWiseApps, a GitHub project
-to return old-time binary logic applications back into the mainstream.
+to bring back old-time binary logic applications into the mainstream.
 
 My focal areas are:
 
 - Binary Logic Applications, in this incarnation basically mapping into
-  lists using integer index slot representations and using bitwise
+  lists using integer index-slot representations and using bitwise
   operations ( such as AND &, OR |, XOR ^, NOT ~ ) for super-fast queries. 
 
 - Cross-Python libraries, including core Python and micropython, and
@@ -17,13 +17,15 @@ foundation for developing what I call "binary logic applications".
 
 In the past months:
 
-* liststore.py - a list of lists structure with basic access and update methods
+* liststore.py - a list of lists structure with basic access and update methods,
+  tracking changes to columns and rows, and column indexing for fast queries. 
 
 * tablestore.py - a database/graph-like structure with Python types for columns,
   unique table keys, inter-table key reference integrity and a simple
   JSON save/load mechanism.
 
-The development phase is maybe early-mid beta.
+The overall development phase is maybe mid beta, excluding an envisioned asynchronous 
+framework/mechanism based on asyncio, which may be at the slightly post pre-alpha stage.
 
 Known compatibility is Python v3.9 and micropython v1.20-22.0, running on
 the Raspberry Pi Pico and the Arduino Nano ESP 32.  I would like to support
