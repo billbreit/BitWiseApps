@@ -22,6 +22,7 @@ try:
 except:
     from dev.bitlogic import bit_indexes, power2, bit_length
 
+
 def bit_remove(bint:int, index:int) -> int:
 
     if bint < 0: return None  # error
@@ -54,7 +55,7 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
     def __init__( self, *args, **kwargs ):
         super().__init__(*args, **kwargs)
         self.changed = 0
-        self.vkeys = []
+        self.vkeys = []    # ensure insert order, OrderedDict may not be avail.
         if len(args) > 0:
             if isinstance(args[0], dict):
                 raise  VolatileDictException(f'Create Error - can only create vdict from tuple pairs.')
@@ -66,12 +67,16 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
 
         super().__setitem__(key, value)
         if key not in self.vkeys:
-            self.vkeys.append(key)
+            self.vkeys.append(key)  # ensure insert order
         self.changed |= power2(self.vkeys.index(key))
      
-    def __delitem__(self, item):
+    def __delitem__(self, key):
         """ Not useful for volatile dict, set value to None or DELETED"""
-        raise NotImplementedError
+        
+        super().__delitem__(key)
+        slot = self.vkeys.index(key)
+        self.vkeys.remove(key)
+        self.changed = bit_remove(self.changed, slot )
         
     def __str__(self):
         
@@ -82,21 +87,22 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
         return ss
     
     def pop(self, key):
-        """ Can be used, but not really useful for volatile dict, with reader/writer
-            relationships.  Set value to DELETED"""
+        """ Can be used, but not really useful for complex reader/writer
+           relationships.  Better set value to DELETED"""
         if key not in self:
-            raise  VolatileDictException(f'Key Pop Error: key {key} not found. No delete.')
+            raise  VolatileDictException(f"Key Pop Error: key '{key}' not found. No delete.")
         
         item = super().pop(key)
-        index = self.vkeys.index(key)
-        self.vkeys.pop(index)
-        self.changed = bit_remove(self.changed, index)
+        slot = self.vkeys.index(key)
+        self.vkeys.remove(key)
+        self.changed = bit_remove(self.changed, slot)
         
         return item
 
 
     def popitem(self):
-        """ Not useful for volatile dict, set value to None or DELETED"""
+        """ Not useful for volatile dict, too unpredictable for vdict usage scenario,
+            set value to None or DELETED"""
         raise NotImplementedError
    
     def update(self, otherdict):
@@ -255,6 +261,14 @@ if __name__=='__main__':
         v = vd.pop('x')
     except Exception as e:
         print(e)
+    nl()
+    print('vkeys   ', vd.vkeys)
+    print('changed ', bin(vd.changed))
+    print("Trying del(vd['d']) using __delitem__ ")
+    del(vd['d'])
+    print("'d' in vdict    :", 'd' in vd)
+    print('vkeys   ', vd.vkeys)
+    print('changed ', bin(vd.changed))
     nl()
     
     print("'a' in vdict    :", 'a' in vd)

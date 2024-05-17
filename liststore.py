@@ -1,14 +1,13 @@
 """
 module:     liststore
-version:    v0.4.1
+version:    v0.4.2
 sourcecode: https://github.com/billbreit/BitWiseApps
 copyleft:   2024 by Bill Breitmayer
 licence:    GNU GPL v3 or above
 author:     Bill Breitmayer
 
 liststore - a column-oriented data store using a generalized list of lists structure, 
-with typical list-like operations. For *small datasets*, maybe a few hundred rows,
-especially on limited memory micro-controllers.
+with typical list-like operations. 
            
  - an indexing store for tuples. Note that indexer can consume 
    large amounts of memory and too memory-intensive for a 256K class platform.
@@ -55,7 +54,6 @@ from collections import namedtuple
 
 from math import log, floor, ceil
 
-# from ulib.getset import itemgetter
 from ulib.bitops import power2, bit_indexes, bitslice_insert, bit_remove
 
 
@@ -68,8 +66,6 @@ nl = print
 
 
 """
-
-		
 		
 class ListStoreError(Exception):
 			pass
@@ -87,7 +83,7 @@ class ListStore(object):
 	def __init__(self, column_names:list=None, defaults:list=None, *args, **kwargs ):
 
 		if column_names is None or not isinstance(column_names, list) or column_names==[]:
-			raise ListStoreError('ListStore column_def must have at least one column, in form List[str].')
+			raise ListStoreError('ListStore column_def must have at least one column.')
 			
 		super().__init__()
 		
@@ -142,11 +138,12 @@ class ListStore(object):
 				self.changed[i] &= ~power2(slot)			
 			else:
 				self.changed[i] = 0
+
 	
 	def resolve_defaults(self, in_list:list) -> list:
 	
 		if len(in_list) == 0 or len(in_list) > len(self.col_names):
-			raise ListStoreError('Input length must greater than zero and less than/equal to len(col_names).')
+			raise ListStoreError('Default Error: input length must greater than zero or less than len(col_names).')
 			
 		if len(in_list) == len(self.col_names):
 				return in_list
@@ -161,7 +158,7 @@ class ListStore(object):
 			for d in dlist: 
 				ilist.append(d)
 		else:
-			raise ListStoreError('Not enough defaults to fill missing values.')
+			raise ListStoreError('Defualt Error: Not enough defaults to fill missing values.')
 			
 		return ilist
 		
@@ -171,7 +168,7 @@ class ListStore(object):
 			raise ListStoreError(f'Slot number {slot} must greater than 0.')
 		
 		if slot > len(self.store[0]):
-			raise ListStoreError(f'Slot number {slot} is greater than length of ListStore.')
+			raise ListStoreError(f'Slot number {slot} is greater than len of ListStore.')
 		
 	def slot_for_col(self, col_name:str) -> int:
 		"""slot number for column name"""
@@ -179,7 +176,7 @@ class ListStore(object):
 		try:
 			index = self.col_names.index(col_name)
 		except:
-			return -1
+			raise ListStoreError(f"Get Slot for Column Error: bad column name '{col_name}'")
 		
 		return index
 		
@@ -240,7 +237,7 @@ class ListStore(object):
 		   will stll be valid. """
 	
 		if in_list is None:
-			raise ListStoreError('Append - list passed can not be None')  
+			raise ListStoreError('Append: list passed can not be None')  
 			
 		# defaults  
 		if len(in_list) != len(self.store):
@@ -249,7 +246,7 @@ class ListStore(object):
 				in_list = self.resolve_defaults(in_list)
 				
 			else:
-				raise ListStoreError('List missing values and no defaults defined.')
+				raise ListStoreError('Append: List missing values and no defaults defined.')
 				
 		ilist = list(in_list)
 
@@ -265,7 +262,7 @@ class ListStore(object):
 	def extend(self, list_of_lists:list=None):
 	
 		if list_of_lists is None:
-			raise ListStoreError('No input list provided.')
+			raise ListStoreError('Extend: No input list provided.')
 			
 		#resolve defaults
 		errs = []
@@ -282,12 +279,12 @@ class ListStore(object):
 						new_list.append(ld)
 						
 				else:
-					raise ListStoreError('List missing values and no defaults defined.')
+					raise ListStoreError('Extend Error: List missing values and no defaults defined.')
 			else:
 				new_list.append(lst)
 			
 		if len(errs) > 0:
-			raise ListStoreError('Extend Erros: Not enough values or defaults', e )
+			raise ListStoreError('Extend Error: Not enough values or defaults', e )
 			
 		save_top = self.length  # top_bit, that is last bit + 1
 			
@@ -309,9 +306,10 @@ class ListStore(object):
 
 			
 	def pop(self, row:int ) -> list:
-		""" Remove slots in liststore for a given row, and reindex from scratch
-			to guarantee bitmask references, probably very slow, maybe several
-			hundred milliseconds (?) """
+		""" Remove slots in liststore for a given row, and update all int
+			bitmasks by AND NOT to all values in attr subdicts. Guarantees
+			bitmask references but slow, maybe tens of milliseconds on
+			a microcontroller (Need to test?) """
 		
 		popped_row = [] 
 		self.check_slot(row)
@@ -385,6 +383,11 @@ class ListStore(object):
 		
 		self.indexer.index_attr(attr_name)
 		
+	def drop_attr(self, attr_name:str):
+		"""Create new index for attr.column name"""
+		
+		self.indexer.drop_attr(attr_name)
+		
 	def reindex(self):
 		""" Rebuild entire index, may be slow for large store """
 		self.indexer.reindex()
@@ -452,7 +455,7 @@ class Indexer(object):
 		super().__init__( *args, **kwargs)
 		
 		if col_names == None or len(col_names) == 0:
-			raise IndexerError('A list of column keys must provided to Indexer.') 
+			raise IndexerError('Indexer: A list of column keys must provided to Indexer.') 
 		
 		self._slots:list[str] = col_names
 		self._store = store or []  # empty liststore means class methods only       
@@ -498,7 +501,7 @@ class Indexer(object):
 		"""Create new index for attr.column name"""
 	
 		if attr_name not in self._slots:
-			raise IndexerError('Index Attr -  Columns name ', attr_name, ' not known.')
+			raise IndexerError('Index Attr: Column ', attr_name, ' not known.')
 	
 		storage_slot = self._slots.index(attr_name)
 		
@@ -523,6 +526,12 @@ class Indexer(object):
 	
 		self._index[attr_name] = sub_dict
 		if attr_name not in self._indexed: self._indexed.append(attr_name)
+
+	def drop_attr(self, attr_name:str ):
+		"""Drop indexing for an attribute/column name."""
+		
+		del(self.index[attr_name])
+		self_indexed.remove(attr_name)
 
 		
 	def update_index(self, attr_name:str, row_slot:int, old_value, new_value):
@@ -563,7 +572,7 @@ class Indexer(object):
 			self.append_index( l )
 			
 	def pop_index(self, row_slot:int ):
-		"""Delete one bit from masks in subdict for attr name. """
+		"""Delete one bit from masks in each subdict for indexed attr names. """
 		
 		for attr_name in self._indexed:
 			for key, value in self.index[attr_name].items():
@@ -574,6 +583,12 @@ class Indexer(object):
 
 		for attr_name in self._indexed:
 			self.index_attr(attr_name)
+			
+	def reset( self):
+		"""Clear all indexes."""
+
+		self._index = {}
+		self._indexed = []
 		
 	def query(self, col_name:str, indexed_value ):
 		""" -> Query( col_name, indexed_value, bitint """
@@ -838,9 +853,17 @@ if __name__ == '__main__':
 	nl()
 	for col, val in [('xxx', 'no val'),('aaa', 'no val'),('aaa','test2'),('bbb', 'never'), ('ccc','rule-based'), ('ddd', (3,4,5))]:
 		print('column:', col , ' value: ', val )
-		print('ntstore.find(col, val) -> ', ntstore.find(col, val)) 
-		row_indexes = ntstore.find_all(col, val)
-		print('ntstore.find_all(col, val) -> ', row_indexes )
+		try:
+			sl = ntstore.find(col, val)
+			print('ntstore.find(col, val) -> ', sl )
+		except Exception as e:
+			print('find Error: ', e )
+		try:
+			row_indexes = ntstore.find_all(col, val)
+			print('ntstore.find_all(col, val) -> ', row_indexes )
+		except Exception as e:
+			print('find_all Error: ', e )
+			row_indexes = []
 		print('get_rows(row_indexes) ->')
 		rows = ntstore.get_rows(row_indexes)
 		for r in rows:

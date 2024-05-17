@@ -28,6 +28,8 @@ fix_paths()
 
 
 from liststore import ListStore, TupleStore
+from tablestore import TableStore, TableDef, ColDef
+
 from dev.vdict import VolatileDict
 
 # from random import randint
@@ -353,15 +355,16 @@ def find_all ( val, inlist ):
     return il
 
 
+keys = ls.get_column('key')
 print()
 print("### Use find() to get slot for 'key' ###")
-print('using ls.key, len = ', len(ls.key))
+print('using keys, len = ', len(keys))
 print()
 startt = monotonic_ns()
 
 for i in range(ntest):
-    for k in ls.key:
-        xt = find(k, ls.key )
+    for k in keys:
+        xt = find(k, keys )
         # print( k, xt)
 
 stopt = monotonic_ns()
@@ -370,7 +373,8 @@ print()
 
 print()
 print("### Use find_all() to get slots for 'value' ###")
-vset = set(ls.value)
+values = keys = ls.get_column('value')
+vset = set(values)
 print('using vset ', vset)
 print()
 startt = monotonic_ns()
@@ -380,7 +384,7 @@ startt = monotonic_ns()
 
 for i in range(ntest):
     for v in vset:
-        xt = find_all(v, ls.value )
+        xt = find_all(v, values )
         # print( v, xt )
 
 stopt = monotonic_ns()
@@ -405,7 +409,30 @@ print('Extend TupleStore(ms): ', (stopt - startt)/tscale)
 print('index ' , ls.index )
 print()
 
-print('##### Fifth Round ... VolatileDict  #####' )
+print('##### Fifth Round ... TablesStore  #####' )
+
+tstore_def = TableDef(tname = 'Test', filename = 'testing111', unique=['key'],
+					 col_defs = [ColDef(cname='key', default=None, ptype=str),
+								 ColDef(cname='value', default=0, ptype=str)])
+
+startt = monotonic_ns()
+print('Start time(ns): ', startt )
+
+for i in range(ntest):
+    ts = TableStore(tstore_def)
+    ts.extend(lpairs)
+
+stopt = monotonic_ns()
+
+
+print('Extend TableStore(ms): ', (stopt - startt)/tscale)
+print('index ' , ls.index )
+print()
+
+
+
+
+print('##### Sixth Round ... VolatileDict  #####' )
 
 startt = monotonic_ns()
 print('Start time(ns): ', startt )
