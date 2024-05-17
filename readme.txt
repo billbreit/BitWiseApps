@@ -1,34 +1,53 @@
+README.txt for Bill Breitmayer's BitWiseApps, a GitHub project
+to return old-time binary logic applications back into the mainstream.
 
+My focal areas are:
 
-README.txt for Bill Breitmayer's hello-world, a temporary project
-to help me learn about GitHub projects.  My focal areas are:
-
-- Binary Logic applications
+- Binary Logic Applications, in this incarnation basically mapping into
+  lists using integer index slot representations and using bitwise
+  operations ( such as AND &, OR |, XOR ^, NOT ~ ) for super-fast queries. 
 
 - Cross-Python libraries, including core Python and micropython, and
   when possible Circuit Python, or any other worthy Python dialect.
 
-The first example is BitLogic, a ones-complement wrapper in a 
-two-complement world - for debugging, not deployment.  It may provide
-a foundation for developing what I call "binary logic applications".
+The first example was bitlogic.py, a ones-complement wrapper in a 
+two-complement world - for debugging, not deployment.  The next 
+was bitslice.py for performing "bit surgery",  These will provide a
+foundation for developing what I call "binary logic applications".
 
-The development phase is maybe early beta.
+In the past months:
 
-Known compatibility is Python v3.9 and micropython v1.20.0, running on
-a Pico.  Not sure about CircuitPython, I haven't been able to get it
-working yet.
+* liststore.py - a list of lists structure with basic access and update methods
+
+* tablestore.py - a database/graph-like structure with Python types for columns,
+  unique table keys, inter-table key reference integrity and a simple
+  JSON save/load mechanism.
+
+The development phase is maybe early-mid beta.
+
+Known compatibility is Python v3.9 and micropython v1.20-22.0, running on
+the Raspberry Pi Pico and the Arduino Nano ESP 32.  I would like to support
+newer versions of CircuitPython (8+), I haven't been able to get it all the
+parts working yet.
 
 To run a __name__=='__main__': style test script, start up a decent
-terminal, change current directory to point to bitlogic.py and run: 
+terminal, change current directory to point to liststore and tablestore and run: 
 
-python bitlogic.py
+python liststore.py
 
-On the Pico using gc.mem_free, the basic classes and functions consume
-about 1.6K ( to the start of the test script ) .  The entire test script
-consumes about 20K ( total memory at the end of the script).
+python tablestore.py
 
- 
+The big challenge is to reduce memory footprint for micro-controller platforms such
+as the Raspberry Pi Pico and the Arduino Nano ESP 32, with 256KB and 512KB of "primary"
+static RAM respectively, before allocating 80-100KB for heap memory.
 
-https://gitgub.com/billbreit/hello-world
+On the Pico using gc.mem_free, the basic classes and functions ( at this point, May 2024 )
+consume about 10KB ( after clearing import working memory with gc.collect ) at the start
+of the test script.  The test scripts consume about 20-30KB total memory at the end of
+the script. In a practical application, a TableStore or ListStore structure of a hundred
+rows ( assuming 200 bytes per row ) might consume 40-50K. 
+
+Still in beta, but it's moving along ... see https://github.com/billbreit/BitWiseApps/
+
 
      
