@@ -1,6 +1,8 @@
 ### BitWiseApps
 
-A toolkit for creating small footprint, high performance applications with Binary Logic on Python and MicroPython platforms. 
+A toolkit for creating small footprint, high performance applications with Binary Logic on Python and MicroPython platforms.
+
+Current version is 0.4.2.
 
 So far, I've added:
 
