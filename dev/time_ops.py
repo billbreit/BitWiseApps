@@ -30,6 +30,18 @@ try:
     py_bitlen_avail = True
 except:
     py_bitlen_avail = False
+    
+try:
+    from micropython import const
+except:
+    const = lambda x : x
+    
+try:
+    x = '111'.zfill(10)
+    zfill_avail = True
+except:
+    zfill_avail = False
+
 
     
 nl = print
@@ -61,7 +73,7 @@ for i in range(10):
 
 # import time
 
-scale_msec = 1000000
+scale_msec = const(1000000)
  
   
 def timer(func, repeat=1): 
@@ -92,16 +104,14 @@ print()
    conversion (pow/log2), in addition to the hard limit of float(2^127) in mpy.
    """
    
-scale = 200   # creates 2^scale integers, mpy log blowup at 2^127
-bit_density = 20  # density of bits, mainly for bit_indexes testing
-num_of_elements = 100
-inner_repeat = 10
+scale = const(200)   # creates 2^scale integers, mpy log blowup at 2^127
+bit_density = const(20)  # density of bits, mainly for bit_indexes testing
+num_of_elements = const(100)
+inner_repeat = const(10)
 assert num_of_elements >= inner_repeat, "Repeat must be less than num elements."
 
 
-
-
-MPY_MAX_POWER = 127
+MPY_MAX_POWER = const(127)
 MPY_MAX_VALUE = math.pow(2, 127)
 
 print('scale ', scale )
@@ -498,6 +508,15 @@ def bitslice_insert(bint, index, bit_len, value ):
    
     return (((( bint >> index ) << bit_len) | value ) << index ) | bint & (( 1 << index )-1)
 
+def bitslice_insert_bin(bint, index, bit_len, value ):
+    """Testing, may not be optimal ? """
+
+    bstr = bin(bint)[2:]
+    vstr = bin(value)[2:].zfill(bit_len)
+    bstrout = bstr[:index] + vstr.zfill(bit_len) + bstr[index:]
+    return int(bstrout, 2 )
+
+
 
 def bit_remove_time(n):
     for i in range(0, n): 
@@ -513,7 +532,12 @@ def bit_insert_time(n):
 def bitslice_insert_time(n):
     for i in range(0, n): 
         for j in range(0,num_of_elements): 
-            x = bit_insert( j, i, 7 )
+            x = bitslice_insert( j, i, 5,  7 )
+            
+def bitslice_insert_bin_time(n):
+    for i in range(0, n): 
+        for j in range(0,num_of_elements): 
+            x = bitslice_insert_bin( j, i, 5, 7 )
 
 print('Math and Bitwise Ops Tests')
 nl()
@@ -558,8 +582,9 @@ timer(bit_indexes_bin_time, repeat=1)(inner_repeat)  # faster than brute on py, 
 print()
 timer(bit_remove_time, repeat=1)(inner_repeat) 
 timer(bit_insert_time, repeat=1)(inner_repeat)
-timer(bitslice_insert_time, repeat=1)(inner_repeat) 
-
+timer(bitslice_insert_time, repeat=1)(inner_repeat)
+if zfill_avail:  # no str.zfill on mpy
+    timer(bitslice_insert_bin_time, repeat=1)(inner_repeat) 
     
 endt = time.time_ns()
 
