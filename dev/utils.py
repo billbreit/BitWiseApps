@@ -4,8 +4,19 @@ import time
 from random import randint
 
 scale_msec = 1000000
- 
-  
+
+"""Compat. Py 3.9"""
+try:
+    from micropython import const
+except:
+    const = lambda x : x
+    
+    def test_type( ptype, value ):
+        if tuple in ptype.__bases__:  # is namedtuple
+            x = ptype(*value)
+        else:
+            x = ptype(value) 
+   
 def timer(func, repeat=1): 
     """This function shows the execution time of the function object passed."""
     # Repeat doesn't work ( or make sense ) for @timer(repeat=123), only as call.

@@ -1,6 +1,6 @@
 """
 module:     tablestore
-version:    v0.4.2
+version:    v0.4.1
 sourcecode: https://github.com/billbreit/BitWiseApps
 copyleft:   2024 by Bill Breitmayer
 licence:    GNU GPL v3 or above
@@ -11,7 +11,7 @@ tablestore - a small table store with relational functions based on
 	references between tables and persistence ( on demand ) using json.
 	
 	For *small datasets*, maybe a few hundred rows on limited-memory 
-	micro-controllers.  200 rows X 200B/row = 40K ?
+	micro-controllers.  200 rows X 200B/row ~= 40K, depending on qstr etc.
 
 Example:
 
@@ -61,7 +61,7 @@ from collections import namedtuple, OrderedDict
 
 from liststore import TupleStore
 
-from ulib.fsutils import isdir, path_exists, path_separator
+from ulib.fsutils import path_exists, path_separator
 
 
 
@@ -88,8 +88,10 @@ class TableStoreError(Exception):
 
 class TableStore(TupleStore):
 
+	_tdef:TableDef = None   # for subclassing
+
 	
-	def __init__(self, tdef:TableDef, db:'DataStore'=None ):
+	def __init__(self, tdef:TableDef=None, db:'DataStore'=None ):
 		""" Based on TupleStore with:
 			- uniqueness constraints, assure unique key
 			- python types, including namedtuple in columns, recoverable from JSON
@@ -100,14 +102,20 @@ class TableStore(TupleStore):
 
 		"""
 
-		self._tdef = tdef
-	
-		col_names = [ c.cname for c in tdef.col_defs]
-		defaults = [ c.default for c in tdef.col_defs]
+		if self._tdef is not None:  # use subclass _tdef, will override input
+			self.tdef = self._tdef
+			# print('_tdef is None ', self._tdef )
+		else:
+			self.tdef = tdef
+			# print('_tdef ', self._tdef )
 
-		super().__init__(tdef.tname, col_names, defaults)
+	
+		col_names = [ c.cname for c in self.tdef.col_defs]
+		defaults = [ c.default for c in self.tdef.col_defs]
+
+		super().__init__(self.tdef.tname, col_names, defaults)
 		
-		self.ptypes:list[type] = [ c.ptype for c in tdef.col_defs]
+		self.ptypes:list[type] = [ c.ptype for c in self.tdef.col_defs]
 		
 		self.db:'DataStore' = db  # if TableStore used in DataStoreDef, table with parent/child key relations. 
 		self._prelations:list[PRelation] = []  # as parent to child
@@ -123,18 +131,27 @@ class TableStore(TupleStore):
 			# child to parent, answers table row parents_exist ?
 			self._crelations = [ CRelation( r.ccol, self.db.tabledict[r.parent], r.pcol  )
 									for r in self.db.relations if r.child == self.tablename ]
+	@classmethod
+	def constructor( cls ):
+		"""Returns class instance of itself as ttype=class for db constructor.
+		   Means that TableSore is subclassed and has cls._tdef."""  
+		
+		if cls._tdef is not None:  # is subclassed
+			return DBTableDef( cls._tdef.tname, cls, cls._tdef.filename,
+								cls._tdef.unique, cls._tdef.col_defs)
+ 
 							
 	@property
 	def tablename(self) -> str:
-		return self._tdef.tname
+		return self.tdef.tname
 
 	@property   
 	def filename(self) -> str:
-		return self._tdef.filename      
+		return self.tdef.filename      
 	
 	@property   
 	def unique_columns(self) -> list[str]:
-		return self._tdef.unique
+		return self.tdef.unique
 		
 	
 	def keys(self) -> list[list]:
@@ -200,16 +217,26 @@ class TableStore(TupleStore):
 			errors.extend(err_list)         
 	
 		return errors
+	
+	@staticmethod	
+	def test_type( ptype, value ):
+		"""Generic type tester, will value pass type constructor,
+		   instance can be converted to target type, maybe incorrectly,
+		   tuple -> str for instance, may need str -> tuple parser. """
+	
+		try:
+			if tuple in ptype.__bases__:  # is namedtuple
+				x = ptype(*value)
+			else:
+				x = ptype(value)
+		except Exception as e:
+			raise TableStoreError(f"Bad Python Type: '{value}' is not {ptype}. {e} ")
+			
+		return x
 
 	def check_column_types(self, col_name:str, col_values:list=None ) -> list:
 		"""Validate an entire column. Faster than validate_rows ? 
 		   If not col_vals, use col_name in table store"""
-		
-		def test_type( ptype, value ):
-			if tuple in ptype.__bases__:  # is namedtuple
-				x = ptype(*value)
-			else:
-				x = ptype(value) 
 		
 		if col_values is None:
 			col_values = self.get_column(col_name)
@@ -222,7 +249,7 @@ class TableStore(TupleStore):
 		err_list = []
 		for val in col_values:
 			try:
-				test_type(ptype, val)
+				self.test_type(ptype, val)
 			except:
 				err_list.append(f"Validation Error: value '{val}' must be type {ptype}")
 		
@@ -238,11 +265,8 @@ class TableStore(TupleStore):
 		err_list = []
 		for pt, v in zip(self.ptypes, list_in):
 			try:
-				if tuple in pt.__bases__:  # is namedtuple
-					x = pt(*v)
-				else:
-					x = pt(v)               
-			except:
+				self.test_type(pt, v)
+			except TableStoreError as e:
 				err_list.append(f"Validation Error: value '{v}' must be type {pt}")
 				
 		return err_list
@@ -271,6 +295,8 @@ class TableStore(TupleStore):
 		   Row is in relation as child is to parent, use _crelations"""
 				
 		errors = []
+		
+		# print('in val par ', self.db, self._crelations, self._prelations)
 		
 		if self.db:
 			for ccol, par, pcol in self._crelations:
@@ -322,12 +348,16 @@ class TableStore(TupleStore):
 
 	def get(self, key:list, col_name:str ):
 		"""Get value in a column with unique key, return value.  """
+		
+		if isinstance(key, str): key = [key]
 	
 		return super().get(self.find_unique(key), col_name)
 
 		
 	def get_key(self, key:list ) -> tuple:
 		""" Get row with key, return tuple of values."""
+		
+		if isinstance(key, str): key = [key]
 	
 		slot = self.find_unique(key)
 		
@@ -494,8 +524,9 @@ class TableStore(TupleStore):
 	def save(self, filename:str=None):
 		"""Save TableStore to JSON."""
 		
+		# db will re-call table.save providing full 'dir/filename' path
 		if self.db and not filename:
-			self.db.save_all()  # db will re-call table.save providing full 'dir/filename' path
+			self.db.save_all() 
 	
 		data = self.dump()
 		
@@ -565,7 +596,7 @@ class DataStoreError(Exception):
 class DataStore(object):
 	"""Multi-table collection, has some features of a relational database.  
 	   In fact, it's more a relational database than a "data store" per se,
-	   but using the term DataStore may avoid confusion.
+	   but using the term DataStore may avoid a bit of confusion.
 			
 		- build referential integrity tables embedded into TableStore instances.
 			- no delete for parent with children
@@ -574,23 +605,36 @@ class DataStore(object):
 		- clear all changed masks
 		- load/save of individual table triggers db load/save.
 		- and missing lots of things 'real' databases have ...  """
+		
+	_dbdef:DataStoreDef = None  # for subclassing, table_defs will be a list
+	                            # of TableStore subclasses, not str table names,
+	                            # must be subclass like [ TableClass1, TableClass2 ]
+	                            # in parent -> child db load order.
 
-	def __init__(self, dbdef:DataStoreDef ):
+	def __init__(self, dbdef:DataStoreDef=None ):
 	
-		self.dbdef = dbdef
+		if self._dbdef is not None:
+			# rewrite table_defs from class instances to DBTableDef tuples
+			
+			tdefs = [ tclass.constructor() for tclass in self._dbdef.table_defs ]
+			  
+			self.dbdef = DataStoreDef( self._dbdef.dbname, self._dbdef.dirname,
+			             self._dbdef.relations, tdefs ) 
+		else:
+			self.dbdef = dbdef
 
-		if len({ tdef.tname for tdef in dbdef.table_defs }) != len([ tdef.tname for tdef in dbdef.table_defs ]):
+		if len({ tdef.tname for tdef in self.dbdef.table_defs }) != len([ tdef.tname for tdef in self.dbdef.table_defs ]):
 			raise DataStoreError('DataStoreDef contains duplicate tables.')
 		
 		self.tabledict = OrderedDict()  # maintain order, must load top-down
-		for tdef in dbdef.table_defs:
+		for tdef in self.dbdef.table_defs:
 			self.tabledict[tdef.tname] = tdef.ttype(tdef, self)
 		
 		for tobject in self.tabledict.values():
 			tobject._postinit()  # embeds parent->child and child->parent rels into tables
 		
-		if not path_exists(dbdef.dirname):
-			os.mkdir(dbdef.dirname)
+		if not path_exists(self.dbdef.dirname):
+			os.mkdir(self.dbdef.dirname)
 			
 	@property
 	def dbname(self):
@@ -611,7 +655,7 @@ class DataStore(object):
 	def table(self, name:str) -> TableStore:
 		return self.tabledict[name]
 		
-	def tables(self) -> list[TableStore]:
+	def tables(self) -> list[tuple[str, TableStore]]:
 		return self.tabledict.items()
 		
 	def reset_all(self):
@@ -629,7 +673,7 @@ class DataStore(object):
 	def load_all(self):
 	
 		for tname, tobj in self.tables():
-			fullname = '/'.join([self.dirname, tname])
+			fullname = path_separator().join([self.dirname, tname])
 			# print('loadall ', fullname)
 			tobj.load(fullname)
 		
@@ -643,17 +687,16 @@ def display_table( tstore ):
 	# print('Store type  ', type(tstore))
 	print('Table name  ', tstore.tablename)
 	print('Length      ', tstore.length)
-	# nl()
 	for attr, col_store in zip(tstore.col_names, tstore.store):
 		print('Column ', attr, col_store)
-	nl()
+	print()
 	print('Index ')
 	for k, subdict in tstore.index.items():
 		print( k, subdict )
-	nl()
+	print()
 	print('Columns changed ', [bin(i) for i in tstore.changed])
 	print('Rows changed   ', bin(tstore.rows_changed()) )
-	nl()
+	print()
 	# print('Rows changed indexes ', bit_indexes(lstore.rows_changed()))
 	# print('Rows deleted   ', bin(lstore._deleted))            
 
@@ -667,8 +710,9 @@ if __name__ == '__main__':
 	nl()
 	
 	if mem_free_present:
-		main_start = mem_free()
 		collect()   # makes pcio/esp32 more consistent
+		main_start = mem_free()
+
 
 	"""
 	MyTuple = namedtuple('MyTuple', [ 'x', 'y', 'z'])
@@ -744,6 +788,7 @@ if __name__ == '__main__':
 	tstore.set(['kk', 77], 'col7', ( 12, 11, 10 ))
 	nl()
 	print('Columns changed ', [bin(i) for i in tstore.changed])
+	print('Rows changed    ', bin(tstore.rows_changed()))
 	nl()
 	
 	print("Appending ['LLL', 230 ] ...")
@@ -991,16 +1036,17 @@ if __name__ == '__main__':
 	tdb2.load_all()
 	nl()
 	
-
+	print('Examining parent and child tables ...')
+	nl()
 	par2t = tdb2.table('partable2')
 	cht = tdb2.table('chtable')
-	print("parents_exist ['a', 'mmm']       ", par2t.parents_exist([ 'a', 'mmm', 'testing a.z']), ' -> problem, has no parents, so has required parents is True')
-	print("children_exist ['x', 'mmm']      ", par2t.children_exist([ 'x', 'mmm', 'testing a.z']))
-	print("val children ['y', 'mmm']        ", par2t.validate_children([ 'y', 'mmm', 'testing a.z']))
-	print("val parents ['m','n']            ", cht.validate_parents([ 'm', 'n', 'testing a.z']))
-	print("validate row [ 'a', 'z', (1,2,3)]", cht.validate_row([ 'a', 'z', (1,2,3)]))
+	print("parent table: parents_exist ['a', 'mmm']       ", par2t.parents_exist([ 'a', 'mmm', 'testing a.z']), ' -> problem, has no parents, so has required parents is True')
+	print("parent table: children_exist ['x', 'mmm']      ", par2t.children_exist([ 'x', 'mmm', 'testing a.z']))
+	print("parent table: val children ['y', 'mmm']        ", par2t.validate_children([ 'y', 'mmm', 'testing a.z']))
+	print("child table: val parents ['m','n']             ", cht.validate_parents([ 'm', 'n', 'testing a.z']))
+	print("child table: validate row [ 'a', 'z', (1,2,3)] ", cht.validate_row([ 'a', 'z', (1,2,3)]))
 	nl()
-	print("find_all in child ['col2','y']   ", cht.find_all('col2', 'y' ))
+	print("child table: find_all ['col2','y']             ", cht.find_all('col2', 'y' ))
 	nl()
 	print('Indexing attr col1 ... ')
 	cht.index_attr('col1')
@@ -1064,6 +1110,48 @@ if __name__ == '__main__':
 			print('Table ', name , ' cleared.  Len is ', tbl.length)
 		nl()
 		
+	print('=== SubClassing ===')
+	nl()
+	
+	
+	class MyTable(TableStore):
+	
+		_tdef = TableDef(tname = 'MyTable', filename = 'mytable111', unique=['col1'],
+					 col_defs = [ColDef(cname='col1', default=None, ptype=str),
+								 ColDef(cname='col2', default=0, ptype=int),
+								 ColDef(cname='col3', default=0.0, ptype=float),
+								 ColDef(cname='col4', default={}, ptype=dict)])
+								 
+		def sum(self, col_name ):
+			
+			return sum(self.get_column(col_name))
+
+								 
+	mt = MyTable()
+	print('mt tdef ', mt.tdef)
+	nl()
+	print('dir(mt) ', dir(mt))
+	nl()
+	
+	mt.extend([[ 'a', 123, 7.3, {'hello':1, 'world':2}],
+	           [ 'b', 12423, 33.5, {'goodbye':999, 'world':777}],
+	           [ 'c', 523, 21.66, {'helloagain':999, 'yall':777}]])
+	
+	for attr in mt.col_names:
+		mt.index_attr(attr)
+	           
+	display_table(mt)
+	print()
+	
+	print('sum of col2: ', mt.sum('col2')) 
+	print('sum of col3: ', mt.sum('col3')) 
+	nl()
+
+	print('isinstance(mt, MyTable) ', isinstance(mt, MyTable))
+	print('isinstance(mt, TableStore) ', isinstance(mt, TableStore))
+	print('isinstance(mt, TupleStore) ', isinstance(mt, TupleStore))
+				
+	nl()
 	
 
 """
