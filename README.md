@@ -1,6 +1,6 @@
 ### BitWiseApps
 
-A toolkit for creating small footprint, high performance applications with Binary Logic on Python and MicroPython platforms.
+A toolkit for creating small footprint, high performance applications with Binary Logic on Python and MicroPython platforms.  The most significant modules so far are ListStore and TableStore which provide some level of database capability in a small memory footprint, a base of about 40K, usable on Raspberry Pi Pico and ESP32 microcontrollers.      
 
 Current version is 0.4.2.
 
