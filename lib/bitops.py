@@ -107,12 +107,12 @@ def mpy_bitlength( bint:int ) -> int:
     return mpy_logar2(bint) + 1
 
 
-try:
+try:  # Python
     (123).bit_length()
     py_bitlen_avail = True
     bit_length = py_bitlength
     logar2 = py_logar2
-except Exception as e:
+except Exception as e:    # micropython
     py_bitlen_avail = False
     bit_length = mpy_bitlength
     logar2 = mpy_logar2

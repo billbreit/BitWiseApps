@@ -49,18 +49,11 @@ except:
 from collections import namedtuple
 
 try:
-    from bitlogic import bit_indexes, power2
-    from .ulib.bitops import bit_remove
+    from bitlogic import bit_indexes, power2, bit_length, bit_remove
 except:
-    from dev.bitlogic import bit_indexes, power2, bit_length
+    from dev.bitlogic import bit_indexes, power2, bit_length, bit_remove
 
 
-def bit_remove(bint:int, index:int) -> int:
-
-    if bint < 0: return None  # error
-    if index < 0 or index > bit_length(bint)-1: return bint
-
-    return (bint >> index+1 )<< index | bint&(1<<index)-1
 
 nl = print
 
@@ -134,6 +127,14 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
         ss += ', '.join(kvs)
         ss += '})'
         return ss
+
+    def __repr__(self):
+        
+        ss = self.__class__.__name__ + '(['
+        kvs = [ '(' + repr(k) + ', ' + repr(v) + ')'  for k, v in self.items()]
+        ss += ', '.join(kvs)
+        ss += '])'
+        return ss
      
     @classmethod
     def fromkeys(self, keys:list, value=None ) -> 'VolatileDict':
@@ -196,7 +197,9 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
     
      
     def update(self, dictorlist ):
-    
+        """Generally run once during dict lifespan.  If dictorlist is mpy
+           dict, key order is not guaranteed."""
+        
         if isinstance(dictorlist, dict) and len(dictorlist)>0 :
             for k, v in dictorlist.items():
                 self.__setitem__(k, v)
@@ -233,13 +236,16 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
         """ Get values for list of keys, reset changed bit and
              return list of items """ 
         
-        if not keylist: return []
+        if not keylist:
+            return []
             
-        if not isinstance(keylist,(list, tuple)): keylist = [keylist]
+        if not isinstance(keylist,(list, tuple)):
+            keylist = [keylist]
   
         itemlist = [ self[key] for key in keylist ]
                             
-        for key in keylist: self.reset(key)
+        for key in keylist:
+            self.reset(key)
         
         return itemlist
         

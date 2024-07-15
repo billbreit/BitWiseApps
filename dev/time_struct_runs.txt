@@ -1,0 +1,105 @@
+
+
+
+====================== Python 3.9 on RP400 ================================
+
+List build comp (ms):  0.169647
+Scale is :  256
+Repeats =  10
+
+##### First Round ... build dict #####
+
+dict len(dd):  256
+build dict with for k, v in lpairs loop (ms):  0.863104
+
+
+dict len(dd):  256
+build dict directly from dict(lpairs) (ms):  0.277016
+
+Note: should be faster than loop ('repeat' versus 'repeat x scale'),
+but is slower on micropython Pico v.21, about same on Nano ESP32 v.22.
+Compare to VDict, subclass of dict.
+
+##### build OrderedDict #####
+
+Ordered Dict len(dd):  256
+Ordered Dict build (ms):  1.247785
+
+##### OrderedDict rewrites #####
+len(dd):  256
+Rewrites(ns):  0.965769
+
+dd gone
+
+##### Second Round ... append/extend list  #####
+List Extend(ms):  0.028167
+
+List Append(ms):  0.842733
+
+### List index() Function ###
+
+List index() Function(ms):  12.496368
+
+
+##### Third Round ... ListStore  #####
+
+ListStore append lpairs in loop.
+Append ListStore(ms):  16.980179
+ls.length  256
+index  {}
+
+ListStore extend with lpairs.
+Extend ListStore(ms):  2.006333
+ls.length  256
+index  {}
+
+### Index 'value' ###
+
+Index 'value' attr (ms):  3.940428
+
+ls.index.keys()  {'value': {'ggggg': 1823497468304192053914503700924219021311338341191189984873347779652175269920, 'aaaaa': 7293989873216768215658014803696876085245353364764759939493391118608701079681, 'fffff': 911748734152096026957251850462109510655669170595594992436673889826087634960, 'bbbbb': 14587979746433536431316029607393752170490706729529519878986782237217402159362, 'ccccc': 29175959492867072862632059214787504340981413459059039757973564474434804318724, 'ddddd': 58351918985734145725264118429575008681962826918118079515947128948869608637448, 'hhhhh': 3646994936608384107829007401848438042622676682382379969746695559304350539840}}
+
+### Use list index['value'][key] for int mask and get rows ###
+
+Get index for value[k] and get_rows with index (ms):  10.287036
+
+
+### Use find() to get slot for 'key' ###
+using keys, len =  256
+
+Get slot for unqiue key in ls.key (ms):  13.149936
+
+
+### Use find_all() to get slots for 'value' ###
+using vset  {'ggggg', 'aaaaa', 'fffff', 'bbbbb', 'ccccc', 'ddddd', 'hhhhh'}
+
+Get slots for duplicate values in ls.value (ms):  1.832613
+
+##### Fourth Round ... TupleStore  #####
+Start time(ns):  1716064780942886225
+Extend TupleStore(ms):  8.19561
+index  {}
+
+##### Fifth Round ... TablesStore  #####
+Start time(ns):  1716064780951226445
+Extend TableStore(ms):  60.603746
+index  {}
+
+##### Sixth Round ... VolatileDict  #####
+Start time(ns):  1716064781011979560
+
+VolatileDict directly from tuple pairs (ms):  0.979676
+len(vdict)  256
+
+VolatileDict from vdict[k] = v in lpairs (ms):  33.266791
+len(vdict)  256
+
+Result
+Time(ms):  170.418378
+
+
+
+==============================================
+
+
+

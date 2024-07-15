@@ -29,7 +29,7 @@ sys.path.append(parentdir)
 
 from math import log2, floor, ceil
 from random import randint, choice
-from ulib.functools import partial
+from lib.functools import partial
 
 
 class BitLogicException(Exception):

@@ -1,0 +1,4 @@
+{"local_dir": "dev",
+ "mpy_root": "/",
+  "mpy_libs": ["lib", "ulib", "dev"],
+  "root_dir": "bitwise"}

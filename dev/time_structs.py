@@ -38,17 +38,17 @@ if mem_free_avail:
     print('Mem use after import: ', start_mem - mem_free() )
     print('Increase mem alloc after import: ', mem_alloc() -start_alloc ) 
 
-ntest = 10  
+ntest = 1000  
 tscale = 1000000  # scaling ns to ms
 
 starttotalt = monotonic_ns()
 
 
 
-# UpperLOA = "ABCCDEFGHIJKLMNOPQRSTUVWXYZ"
-# LowerLOA = "abcdefghijklmnopqrstuvwxyz"
-UpperLOA = "ABCDEFGHIJKLMOPQ"
-LowerLOA = "abcdefghijklmopq"
+UpperLOA = "ABCCDEFGHIJKLMNOPQRSTUVWXYZ"
+LowerLOA = "abcdefghijklmnopqrstuvwxyz"
+# UpperLOA = "ABCDEFGHIJKLMOPQ"
+# LowerLOA = "abcdefghijklmopq"
 vlen = 5
 Values = ['a'*vlen, 'b'*vlen, 'c'*vlen, 'd'*vlen, 'f'*vlen, 'g'*vlen, 'h'*vlen ]
 

@@ -32,6 +32,9 @@ def partial(func, *args, **keywords):
     newfunc.args = args
     newfunc.keywords = keywords
     return newfunc
+    
+    
+
 """
 
 
@@ -54,3 +57,5 @@ def reduce(function, iterable, initializer=None):
     for element in it:
         value = function(value, element)
     return value
+    
+

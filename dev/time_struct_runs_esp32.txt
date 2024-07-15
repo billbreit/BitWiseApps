@@ -1,0 +1,160 @@
+
+===== strcuts on esp32 ================
+
+>>> %Run -c $EDITOR_CONTENT
+Start mem before import:  8302816
+Start alloc before import:  18736
+Mem use after import:  185728
+Increase mem alloc after import:  115568
+
+List build comp (ms):  2.817
+Scale is :  256
+Repeats =  10
+
+##### First Round ... build dict #####
+
+dict len(dd):  256
+build dict with for k, v in lpairs loop (ms):  102.893
+Mem use after dict build:  224432
+
+
+dict len(dd):  256
+build dict directly from dict(lpairs) (ms):  97.025
+
+Note: should be faster than loop ('repeat' versus 'repeat x scale'),
+but is slower on micropython Pico v.21, about same on Nano ESP32 v.22.
+Compare to VDict, subclass of dict.
+
+##### build OrderedDict #####
+
+Ordered Dict len(dd):  256
+Ordered Dict build (ms):  181.947
+Mem use after Ordered Dict build:  171888
+
+##### OrderedDict rewrites #####
+len(dd):  256
+Rewrites(ns):  166.455
+
+dd gone
+
+##### Second Round ... append/extend list  #####
+List Extend(ms):  1.869
+
+List Append(ms):  33.431
+
+### List index() Function ###
+
+List index() Function(ms):  161.873
+
+Mem use after dict/klist del and collect:  149872
+
+##### Third Round ... ListStore  #####
+
+ListStore append lpairs in loop.
+Append ListStore(ms):  465.873
+ls.length  256
+index  {}
+
+ListStore extend with lpairs.
+Extend ListStore(ms):  67.519
+ls.length  256
+index  {}
+
+### Index 'value' ###
+
+Index 'value' attr (ms):  155.437
+
+ls.index.keys()  {'value': {'ddddd': 58351918985734145725264118429575008681962826918118079515947128948869608637448, 'ggggg': 1823497468304192053914503700924219021311338341191189984873347779652175269920, 'fffff': 911748734152096026957251850462109510655669170595594992436673889826087634960, 'aaaaa': 7293989873216768215658014803696876085245353364764759939493391118608701079681, 'hhhhh': 3646994936608384107829007401848438042622676682382379969746695559304350539840, 'ccccc': 29175959492867072862632059214787504340981413459059039757973564474434804318724, 'bbbbb': 14587979746433536431316029607393752170490706729529519878986782237217402159362}}
+
+### Use list index['value'][key] for int mask and get rows ###
+
+Get index for value[k] and get_rows with index (ms):  356.041
+
+
+### Use find() to get slot for 'key' ###
+using keys, len =  256
+
+Get slot for unqiue key in ls.key (ms):  185.845
+
+
+### Use find_all() to get slots for 'value' ###
+using vset  {'ddddd', 'ggggg', 'fffff', 'aaaaa', 'hhhhh', 'ccccc', 'bbbbb'}
+
+Get slots for duplicate values in ls.value (ms):  31.6
+
+##### Fourth Round ... TupleStore  #####
+Start time(ns):  769445226568894000
+Extend TupleStore(ms):  74.599
+index  {}
+
+##### Fifth Round ... TablesStore  #####
+Start time(ns):  769445226644769000
+Extend TableStore(ms):  2281.187
+index  {}
+
+##### Sixth Round ... VolatileDict  #####
+Start time(ns):  769445228927035000
+
+VolatileDict directly from tuple pairs (ms):  106.231
+len(vdict)  256
+
+VolatileDict from vdict[k] = v in lpairs (ms):  1014.876
+len(vdict)  256
+
+Result
+Time(ms):  5588.626
+End mem free:  8007072
+mem use:  295744
+increase mem alloc :  225584
+
+
+
+
+
+======= ops on esp32 =================
+
+>>> %Run -c $EDITOR_CONTENT
+
+scale  200
+bit density  20
+number of elements 100
+repeats  10
+
+Math and Bitwise Ops Tests
+
+Timed 'no_op_loop' repeated 1 times: 1.91 msecs.
+Timed 'mult_time' repeated 1 times: 6.027 msecs.
+Timed 'div_time' repeated 1 times: 8.898 msecs.
+Timed 'big_mult_time' repeated 1 times: 5.891 msecs.
+Timed 'big_div_time' repeated 1 times: 6.156 msecs.
+Timed 'big_formula_time' repeated 1 times: 23.64 msecs.
+Timed 'and_time' repeated 1 times: 14.361 msecs.
+Timed 'andnot_time' repeated 1 times: 20.308 msecs.
+Timed 'or_time' repeated 1 times: 8.985 msecs.
+Timed 'rshift_time' repeated 1 times: 13.338 msecs.
+Timed 'xor_time' repeated 1 times: 9.1 msecs.
+
+Timed 'bit_length_time' repeated 1 times: 1570.971 msecs.
+Timed 'bit_length_shift_time' repeated 1 times: 1697.686 msecs.
+Timed 'bit_length_chunk_time' repeated 1 times: 190.692 msecs.
+Timed 'bit_length_logar_hybrid_time' repeated 1 times: 44.608 msecs.
+Timed 'bit_length_bin_time' repeated 1 times: 478.924 msecs.
+No int.bit_length() availible.
+
+Timed 'pow2_time' repeated 1 times: 49.805 msecs.
+Timed 'power2_time' repeated 1 times: 22.237 msecs.
+Timed 'log_time' repeated 1 times: 8.851 msecs.
+Timed 'log2_time' repeated 1 times: 7.418 msecs.
+Timed 'logar2_hybrid_time' repeated 1 times: 37.596 msecs.
+Timed 'bit_count_time' repeated 1 times: 316.369 msecs.
+Timed 'bit_count_bin_time' repeated 1 times: 544.629 msecs.
+
+Timed 'bit_indexes_logar_hybrid_time' repeated 1 times: 1077.36 msecs.
+Timed 'bit_indexes_brute_time' repeated 1 times: 2896.01 msecs.
+Timed 'bit_indexes_bin_time' repeated 1 times: 2648.401 msecs.
+
+Timed 'bit_remove_time' repeated 1 times: 11.763 msecs.
+Timed 'bit_insert_time' repeated 1 times: 12.67 msecs.
+Timed 'bitslice_insert_time' repeated 1 times: 12.68 msecs.
+
+Total run time (ms):  11777.18
