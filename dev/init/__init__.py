@@ -25,7 +25,7 @@ print('In dev.init dir, os.getcwd ->', os.getcwd())
 print()
 
 # mpy, full path, crux of bootstrap problem
-# this_dir = 'dev/init/'    
+# this_dir = 'dev/init/'	
 print('__init__.__file__ -> ', __file__)  # error if not defined
 
 config_file_name = 'config.json'
@@ -55,7 +55,7 @@ local_dir = config_dict['local_dir']  # if mpy, need to os.chdir
 mpy_root = config_dict['mpy_root']       # mpy path defaults to ['', '.frozen', '/lib']
 mpy_libs = config_dict['mpy_libs']
 
-
+ 
 
 
 def fix_paths(libs:list=None):
@@ -88,9 +88,13 @@ def fix_paths(libs:list=None):
         print('Python, add rel. parent to path ? ')
         print('rel. parent dir ', parent_dir)
  
-        if parent_dir.endswith(root_dir) and parent_dir not in sys.path:   # assume python,
-            print('par dir not in sys.path, appending parent dir ->', parent_dir)
-            sys.path.append(parent_dir)
+        if parent_dir.endswith(root_dir):
+            if parent_dir not in sys.path:   # assume python,
+                print('par dir not in sys.path, appending parent dir ->', parent_dir)
+                sys.path.append(parent_dir)
+        else:
+            parent_dir = os.getcwd()  # restore
+            
     else:
         print('is micropython, par dir  ', parent_dir)
         print('cwd ', os.getcwd())
@@ -135,3 +139,7 @@ print('fixed sys.path: ' , sys.path)
 print()
 print('=== Exiting dev.init.__init___')
 print()
+
+
+
+
