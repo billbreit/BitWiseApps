@@ -18,7 +18,7 @@ The directory structure:
 
 *Persistence*: save and restore a list of lists structure to/from a JSON file.  Restore tuple and namedtuple types not recognized by json.   
 
-*Uniqueness Constraints*: a key column or set of columns must form a unqiue key, in effect, naming a row.
+*Uniqueness Constraints*: a key column or set of columns must form a unique key, in effect, naming a row.
 
 *Referential Integrity*: When multiple tables are defined within the DataStore class, the relationships between ( single column ) keys in tables are maintained: every child key must have a parent key and no parent with children can be deleted.
 
