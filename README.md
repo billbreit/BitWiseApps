@@ -14,9 +14,9 @@ The directory structure:
     
 **tablestore.py** - a relational-like structure based on liststore with restrictions that implement:
 
-*Persistence*: save and restore a list of lists structure to/from a JSON file.  Restore tuple and namedtuple types not recognized by json.   
-
 *Python Types*: enforce type for any Python type that can be stored by json. 
+
+*Persistence*: save and restore a list of lists structure to/from a JSON file.  Restore tuple and namedtuple types not recognized by json.   
 
 *Uniqueness Constraints*: a key column or set of columns must form a unqiue key, in effect, naming a row.
 
