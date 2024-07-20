@@ -30,9 +30,9 @@ The directory structure:
 
 Experimental test stuff, mostly for bitwise/binary operations.  
 
-#### bitwise/local directory >
+#### bitwise/lib directory >
 
-A base of common core Python/MicroPython libraries, slowly enlarging.
+A base of common core Python/MicroPython libraries, slowly enlarging.  Note: this directory is in the default sys.path for micropython, the 'micropythonic standard'. 
 
 Most programs run in a small memory footprint, a base of about 40K, usable on anything from Raspberry Pi Pico and ESP32 microcontrollers to ... who knows what ( Windows and Linux, not sure about Mac ). 
 
