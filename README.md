@@ -2,22 +2,42 @@
 
 A toolkit for creating small footprint, high performance applications with Binary Logic on Python and MicroPython platforms.
 
-The most significant modules so far are ListStore and TableStore which provide some level of database capability in a small memory footprint, a base of about 40K, usable on Raspberry Pi Pico and ESP32 microcontrollers.      
+All programs herein are 'under development', some parts maybe at the mid-beta phase, others not.
 
-Current version is 0.4.2.
+Almost all of them run under Python 3.9+ or MicroPython 1.20+ on the RP Pico and Arduino Nano ESP32.
 
-So far, I've added:
+The directory structure:
 
-* A working version of bitlogic.py and bitslice.py, for debugging binary logic apps, performing bit surgery and as a compendium of bit logic algorithms and idioms.
+#### bitwise dir >
 
-* A mid(?) beta version of ListStore, a generic 'multi-list' structure illustrating binary logic techniques for compact, high-performance data structures.
+**liststore.py** - a multilist structure of columns and rows.  Intended to be quick and flexible: any row of any column can be of any valid Python type.  For a demo, run as 'python liststore.py'.
+    
+**tablestore.py** - a relational-like structure based on liststore with restrictions that implement:
 
-* An early-mid beta version of TableStore implementing basic Python types, unique keys in tables, parent/child key relations between tables and persistent json storage.  TableStore is intended to provide something like minimal relational database functionality for MicroPython apps.
+*Persistence*: save and restore a list of lists structure to/from a JSON file.  Restore tuple and namedtuple types not recognized by json.   
 
-* A small demo of TableStore and DataStore using subclasses and class instances ... for The Raspberry Pi Zero Club !    
+*Python Types*: enforce type for any Python type that can be stored by json. 
 
-* a development version of VolatileDict (vdict), tracking changed values for pull notifications and providing more features than relatively slow OrderedDict.  Note: new Micropython versions seem to have much better dict performance than older versions ( pre-v20 ? ). 
+*Uniqueness Constraints*: a key column or set of columns must form a unqiue key, in effect, naming a row.
 
-* A small dev environment with prelimary performance data and experiemental stuff.  
+*Referential Integrity*: When multiple tables are defined within the DataStore class, the relationships between ( single column ) keys in tables are maintained: every child key must have a parent key.
+
+**rpzc_demo.py**: An extended demo of DataStore.  Budgets are tight, tensions are mounting, the entrenched old guard may be facing a life-or-death power struggle with younger members.  A time of revoluiton looms !  ( But not in this version of the demo.  Once I figure out an idiom for generator queries, then let slip discord and mayhem in the RPZC. )     
+
+**testinit333.py**: A temporary test for the new init subsystem, still in development
+
+#### bitwise/dev directory >
+
+Experimental test stuff, mostly for bitwise/binary operations.  
+
+#### bitwise/local directory >
+
+A base of common core Python/MicroPython libraries, slowly enlarging.
+
+Most programs run in a small memory footprint, a base of about 40K, usable on anything from Raspberry Pi Pico and ESP32 microcontrollers to ... who knows what ( Windows and Linux, not sure about Mac ). 
+
+The current version is somewhere around 0.4.4. no matter what the code may say.  Last major update was mid-July.
+
+ 
 
 See [Wiki Page](https://github.com/billbreit/BitWiseApps/wiki)
