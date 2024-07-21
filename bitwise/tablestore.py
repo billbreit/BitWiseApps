@@ -652,6 +652,14 @@ class DataStore(object):
         for tobject in self.tabledict.values():
             tobject._postinit()  # embeds parent->child and child->parent rels into tables
         
+        # set attrs for table name/table instance, used for queries where 
+        #   db.name is short hand for db.table('name')    
+        for n, v in self.tabledict.items():
+            if n not in dir(self):
+                setattr(self, n, v)
+            else:
+                raise DataStoreError(f'Table name {n} conflicts with a DataStore name.') 
+        
         if not path_exists(self.dbdef.dirname):
             os.mkdir(self.dbdef.dirname)
 
@@ -1009,6 +1017,7 @@ if __name__ == '__main__':
     nl()
 
     tdb = DataStore(dbdef)
+    print('dir(DataStore) instance ', dir(tdb))
     nl()
     for n, t in tdb.tables():
         print('table ', n )
@@ -1083,10 +1092,11 @@ if __name__ == '__main__':
     tdb2.load_all()
     nl()
     
-    print('Examining parent and child tables ...')
+    print('Examining parent and child tables ... using attrs.')
     nl()
-    par2t = tdb2.table('partable2')
-    cht = tdb2.table('chtable')
+    par2t = tdb2.partable2
+    cht = tdb2.chtable
+    print( 'DBUG ', par2t, cht )
     print("parent table: parents_exist ['a', 'mmm']       ", par2t.parents_exist([ 'a', 'mmm']), ' -> problem, has no parents, so has required parents is True')
     print("parent table: children_exist ['x', 'mmm']      ", par2t.children_exist([ 'x', 'mmm']))
     print("parent table: val children ['y', 'mmm']        ", par2t.validate_children([ 'y', 'mmm']))

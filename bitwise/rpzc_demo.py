@@ -68,8 +68,7 @@ class Member(TableStore):
     @property   
     def inactive_members(self):
     
-        projmems = self.db.table('ProjectMember')
-        pmems = set(projmems.get_column('member'))
+        pmems = set(self.db.ProjectMember.get_column('member'))
         
         return [ mem for mem in self.members if mem not in pmems ]
         
@@ -163,10 +162,8 @@ class ProjectResource(TableStore):
     def expenditure(self, resource:str=None ):
         """Aggregated expenditure for resource type"""  
     
-        rt = self.db.table('Resource')
-      
-        if [resource] in rt.keys():
-            runit = rt.get([resource], 'unit')
+        if [resource] in self.db.Resource.keys():
+            runit = self.db.Resource.get([resource], 'unit')
         else:
             raise TableStoreError(f"Resource '{resource}' not found")  
        
@@ -179,7 +176,7 @@ class ProjectResource(TableStore):
     def expense_report(self):
     
         resr = []
-        for res in self.db.table('Resource').resources:
+        for res in self.db.Resource.resources:
             exp, runit = self.expenditure(res)
             resr.append(f"{res:20} {exp:10} {runit}")
             
@@ -292,11 +289,11 @@ if __name__=='__main__':
     nl()
     
     rpzdb = RPZeroClub()
-    
-   
+    print("dir(rpzdb) instance", dir(rpzdb))
+    nl()
+       
     dbdef = rpzdb.dbdef
-    
-        
+  
     display_dbdef(dbdef)
     nl() 
     
@@ -310,7 +307,7 @@ if __name__=='__main__':
         ['PaleoAmericans4Progress.org', '333 Happy Acres Rest Home']]
      
         
-    mems = rpzdb.table('Member')
+    mems = rpzdb.Member
     
  
     mems.extend(memdata)
@@ -329,7 +326,7 @@ if __name__=='__main__':
                 ]    
     
     
-    projs = rpzdb.table('Project')
+    projs = rpzdb.Project
 
     
     projs.extend(projdata)
@@ -342,7 +339,7 @@ if __name__=='__main__':
     
     
 
-    ######################33 Role ##################3333
+    ###################### Role ##################
     
     
     roledata = [['benefactor',['Lifetime Membership in the Circle of Honor', 'newsletter',
@@ -354,7 +351,7 @@ if __name__=='__main__':
                ['helper', ['newsletter','occasional_labor']]] 
               
               
-    roles = rpzdb.table('Role')
+    roles = rpzdb.Role
     
 
     roles.extend(roledata)
@@ -384,7 +381,7 @@ if __name__=='__main__':
 
     
     
-    projmems = rpzdb.table('ProjectMember')
+    projmems = rpzdb.ProjectMember
     
 
     projmems.extend(projmemdata)
@@ -410,7 +407,7 @@ if __name__=='__main__':
              ['loaned rpz', 'units', 'devices'],
              ['owned rpz', 'units', 'devices']]
              
-    res = rpzdb.table('Resource')
+    res = rpzdb.Resource
     
     res.extend(rdata)
     
@@ -419,7 +416,7 @@ if __name__=='__main__':
     display_table(res)
     nl()
     
-    projr = rpzdb.table('ProjectResource')
+    projr = rpzdb.ProjectResource
     
     prdata = [['Build New Tools', 'time', 100],
               ['Build New Tools', 'parts', 102, '6 RP Picos w/headers !'],
@@ -445,7 +442,7 @@ if __name__=='__main__':
         print(exc)
     nl()
     
-    evt = rpzdb.table('Event')
+    evt = rpzdb.Event
 
     
     evdata = [['BNT 101', 'New Tools Tutorial Part 1','Build New Tools', (2024, 6, 9, 16, 0, 0), 60],
