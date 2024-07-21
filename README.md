@@ -4,7 +4,7 @@ A toolkit for creating small footprint, high performance applications with Binar
 
 All programs herein are 'under development', some parts maybe at the mid-beta phase, others not.
 
-Almost all of them run under Python 3.9+ or MicroPython 1.20+ on the RP Pico and Arduino Nano ESP32.
+Almost all of them will run under both Python 3.9+ and MicroPython 1.20+ on the RP Pico and Arduino Nano ESP32.
 
 The directory structure:
 
@@ -32,7 +32,7 @@ Experimental test stuff, mostly for bitwise/binary operations.
 
 #### bitwise/lib directory >
 
-A base of common core Python/MicroPython libraries, slowly enlarging.  Note: this directory is in the default sys.path for micropython, the 'micropythonic standard'. 
+A base of common core Python/MicroPython libraries, slowly enlarging.  Note: the '/lib' directory is in the default sys.path for micropython, the 'micropythonic standard'. 
 
 Most programs run in a small memory footprint, a base of about 40K, usable on anything from Raspberry Pi Pico and ESP32 microcontrollers to ... who knows what ( Windows and Linux, not sure about Mac ). 
 
