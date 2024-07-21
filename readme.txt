@@ -27,10 +27,8 @@ In the past months:
 The overall development phase is maybe mid beta, excluding an envisioned asynchronous 
 framework/mechanism based on asyncio, which may be at the slightly post pre-alpha stage.
 
-Known compatibility is Python v3.9 and micropython v1.20-22.0, running on
-the Raspberry Pi Pico and the Arduino Nano ESP 32.  I would like to support
-newer versions of CircuitPython (8+), I haven't been able to get it all the
-parts working yet.
+Known compatibility is Python v3.9+ and micropython v1.20-22.0, running on
+the Raspberry Pi Pico and the Arduino Nano ESP 32. 
 
 To run a __name__=='__main__': style test script, start up a decent
 terminal, change current directory to point to liststore and tablestore and run: 
@@ -47,7 +45,7 @@ On the Pico using gc.mem_free, the basic classes and functions ( at this point, 
 consume about 10KB ( after clearing import working memory with gc.collect ) at the start
 of the test script.  The test scripts consume about 20-30KB total memory at the end of
 the script. In a practical application, a TableStore or ListStore structure of a hundred
-rows ( assuming 200 bytes per row ) might consume 40-50K. 
+rows ( assuming 200 bytes per row ) might consume a total of 40-50K. 
 
 Still in beta, but it's moving along ... see https://github.com/billbreit/BitWiseApps/
 
