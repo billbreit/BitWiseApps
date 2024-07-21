@@ -27,10 +27,8 @@ In the past months:
 The overall development phase is maybe mid beta, excluding an envisioned asynchronous 
 framework/mechanism based on asyncio, which may be at the slightly post pre-alpha stage.
 
-Known compatibility is Python v3.9 and micropython v1.20-22.0, running on
-the Raspberry Pi Pico and the Arduino Nano ESP 32.  I would like to support
-newer versions of CircuitPython (8+), I haven't been able to get it all the
-parts working yet.
+Known compatibility is Python v3.9+ and micropython v1.20-22.0, running on
+the Raspberry Pi Pico and the Arduino Nano ESP 32. 
 
 To run a __name__=='__main__': style test script, start up a decent
 terminal, change current directory to point to liststore and tablestore and run: 
