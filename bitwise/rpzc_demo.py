@@ -34,6 +34,9 @@ from tablestore import DataStore, DataStoreDef, RelationDef, ColDef
 
 from liststore import datetime, timestamp
 
+
+        
+
 class Member(TableStore):
 
     _tdef = TableDef(tname = 'Member',
@@ -495,6 +498,10 @@ if __name__=='__main__':
     rpzdb2.load_all()
     print()
     
+    
+    # print('locals()')
+    # print(locals())
+    
     """
     print(f"===   DB Display for Recovered {rpzdb2.dbname}   ===") 
     nl()
@@ -580,7 +587,7 @@ if __name__=='__main__':
         print('Using inline del removes from locals, but doesn\'t reduce memory.')
         print('before ... qstring ? maybe scanning usage and anticipating ?')
         print('after ... now it\'s reducing memory (???).')
-        print('Missing 4K that can\'t account for ? qstr most likely.')
+        print('Missing 4K that can\'t account for ? qstr most likely.  Or base heap realloc ?  ')
         nl()
         # print('locals ', locals())  # mpy, use line command
         # print(memdata)

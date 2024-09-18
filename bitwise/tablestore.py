@@ -44,7 +44,7 @@ and indexing.
    
  - a cross-platform version of namedlist.py, when Python dataclass is not available.
  
-Known to run on Python 3.9, micropython v1.20-22 on a Pico and Arduino Nano ESP32. 
+Known to run on Python 3.9+, micropython v1.20-22 on a Pico and Arduino Nano ESP32. 
     
 """
 
@@ -63,6 +63,7 @@ from collections import namedtuple, OrderedDict
 from liststore import TupleStore, datetime, timestamp
 
 from lib.fsutils import path_exists, path_separator
+
 
  
 
@@ -91,9 +92,10 @@ class TableStoreError(Exception):
 class TableStore(TupleStore):
 
     _tdef:TableDef = None   # If _tdef not None, TableStore is subclassed.
-                            # If subclass part of db, db will use table
+                            # If subclassed as part of db, db will use table
                             # subclass instance in _constructor method.
-                            # Access table instance with db.table('tablename')
+                            # Access any db table instance with 
+                            # db.table('tablename') or db.tablename
 
     
     def __init__(self, tdef:TableDef=None, db:'DataStore'=None ):
@@ -130,7 +132,7 @@ class TableStore(TupleStore):
         """ Remove tangle of references, in mpy del is called by gc.collect"""
         
         self.db = None   # del circular ref.
-        self._prelations = None  # class instances
+        self._prelations = None  # table class instances
         self._crelations = None
 
     def _postinit(self):
@@ -147,7 +149,8 @@ class TableStore(TupleStore):
     def _constructor( cls ):
         """Returns a table def including a class instance of itself as
             ttype=class for db _constructor.  Means that TableSore is
-            subclassed and has cls._tdef and probably a db reference."""  
+            subclassed and has cls._tdef and probably a db reference.
+            Note __del__ method. """  
         
         if cls._tdef is not None:  # is subclassed
             return DBTableDef( cls._tdef.tname, cls, cls._tdef.filename,
@@ -204,9 +207,9 @@ class TableStore(TupleStore):
         
     def validate_row(self, row:list, add:bool=True ) -> list:
         """ Three part validation: types, key uniqueness and, if db,
-            referential integrity - of two types.
-              - add must have parents,
-              - pop must not have children. """ 
+            referential integrity - of two types, changed key or not.
+              - add/ key change new val must have parents,
+              - pop/ key change old val must not have children. """ 
     
         errors = []
 
@@ -372,7 +375,7 @@ class TableStore(TupleStore):
 
         
     def get_key(self, key:list ) -> tuple:
-        """ Get row with key, return tuple of values."""
+        """ Get row with unique key, return tuple of values."""
         
         if isinstance(key, str): key = [key]
     
@@ -517,7 +520,7 @@ class TableStore(TupleStore):
         if resolve_types:
             data = self.fix_types(data, resolve_types)
             
-        return [ self.ntuple_factory(*tup) for tup in tuple(data)]
+        yield from [ self.ntuple_factory(*tup) for tup in tuple(data)]
             
         
     def load(self, filename:str=None ):
@@ -758,30 +761,22 @@ if __name__ == '__main__':
 
     nl = print
     
+    
+    
     nl()
     print('=== Test of TableStore/DataStore Classes ===')
     nl()
     
     if mem_free_present:
-        collect()   # makes pcio/esp32 more consistent
+        collect()   # makes pico/esp32 more consistent
         main_start = mem_free()
+        
+    # adds about 2k to base memory,
+    # also seems to force collect of import alloc  ?    
+    from lib.indexer import Indexer 
 
-
-    """
-    MyTuple = namedtuple('MyTuple', [ 'x', 'y', 'z'])
-    nl()
-    print('MyTuple', MyTuple)
-    print('dir    ', dir(MyTuple))
-    nl()
-    myt = MyTuple(2, 3, 4)
-    print('myt    ', myt)
-    print('dir    ', dir(myt))
-    print('myt.__class__ ', myt.__class__)
-    print('dir     ', dir(myt.__class__))
-    nl()
-    """
     
-    # print(myt.__bases__)
+    # User Type
     
     MyTuple = namedtuple('MyTuple', [ 'x', 'y', 'z'])
     DateTime = namedtuple('DateTime', [ 'year', 'month', 'day', 'hour', 'min', 'secs' ])  # no millis or micros in myp ?
@@ -1126,6 +1121,11 @@ if __name__ == '__main__':
     print('Child table get_rows([1,3])', cht.get_rows([1,3]))
     nl()
     
+    print('Set child indexer instance')
+    cht.set_indexer(Indexer)
+    print('Index instance ', cht.indexer)
+    nl()
+    
     print('Simpe Index and Query')
     for cname in cht.column_names:
         cht.index_attr(cname)
@@ -1179,8 +1179,14 @@ if __name__ == '__main__':
                [ 'b', 12423, 33.5, {'goodbye':999, 'world':777}],
                [ 'c', 523, 21.66, {'helloagain':999, 'yall':777}],
                [ 'd', 1123, 27.66, {'doitagain':111999, 'you\'all':777}]])
-    
+
+
+    print('Set mt indexer instance')
+    mt.set_indexer(Indexer)
+    print('Index instance ', mt.indexer)
+    nl()
     print('Index Attrs', mt.column_names)
+
     print()
     for attr in mt.column_names:
         mt.index_attr(attr)
