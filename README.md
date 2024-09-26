@@ -14,7 +14,7 @@ The directory structure:
     
 **tablestore.py** - a relational-like structure based on liststore with restrictions that implement:
 
-*Python Types*: enforce type for any Python type that can be stored by json. 
+*Python Types*: enforce column type for any Python type that can be stored by json. 
 
 *Persistence*: save and restore a list of lists structure to/from a JSON file.  Restore tuple and namedtuple types not recognized by json.   
 
@@ -22,7 +22,9 @@ The directory structure:
 
 *Referential Integrity*: When multiple tables are defined within the DataStore class, the relationships between ( single column ) keys in tables are maintained: every child key must have a parent key and no parent with children can be deleted.
 
-**rpzc_demo.py**: An extended demo of DataStore.  Budgets are tight, tensions are mounting, the entrenched old guard may be facing a life-or-death power struggle with younger members.  A time of revoluiton looms !  ( But not in this version of the demo.  Once I figure out an idiom for generator queries, then let slip discord and mayhem in the RPZC. )     
+**rpzc_demo.py**: An extended demo of DataStore.  Budgets are tight, tensions are mounting, the entrenched old guard may be facing a life-or-death power struggle with younger members.  A time of revoluiton looms !  ( But not in this version of the demo.  Once I figure out an idiom for generator queries, then let slip discord and mayhem in the RPZC. ) 
+
+A non-trivial database of 7 tables and maybe 40 rows consumes about 50K on RP Pico.
 
 **testinit333.py**: A temporary test for the new init subsystem, still in development
 
