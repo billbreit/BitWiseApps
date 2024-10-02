@@ -1,7 +1,7 @@
 """
 
 module:     vdict
-version:    v0.4.3
+version:    v0.4.4
 sourcecode: https://github.com/billbreit/BitWiseApps
 copyleft:   2024 by Bill Breitmayer
 licence:    GNU GPL v3 or above
@@ -40,11 +40,6 @@ Volatile Dictionary - tracks keys of changed items for notification/synching bet
 # ODict may not be availible on limited micropython build,
 # dict on mpy is signifcantly faster than ODict.
 
-try:
-    from collections import OrderedDict
-    odict_avail = True
-except:
-    odict_avail = False
 
 from collections import namedtuple
 
@@ -67,9 +62,11 @@ class VolatileDictException(Exception):
 ['__class__', '__delitem__', '__getitem__', '__name__', '__setitem__',
 'clear', 'copy', 'get', 'items', 'keys', 'pop', 'popitem', 'setdefault',
 'update', 'values', '__bases__', '__dict__', 'fromkeys']
+
+
 """
 
-# class VolatileDict(OrderedDict):   # preserves load order for dict([tuplepairs])
+
 class VolatileDict(dict):   # faster, OrderedDict may not be availible
     """ Volatile Dictionary, tracks keys of changed items for notification/synching.
     
@@ -286,11 +283,6 @@ if __name__=='__main__':
     print('dir(vdict) ', dir(vd))
     nl()
     print('isinstance(vd,dict) ', isinstance(vd,dict))
-    if odict_avail:
-        print('isinstance(vd,OrderedDict) ', isinstance(vd,OrderedDict)) 
-    else:
-        print('OrderedDict not avail')
-    nl()
     
     print('New VolatileDict')
 
@@ -451,8 +443,7 @@ if __name__=='__main__':
     nl()
     print('kv tuple pairs          ', vdvals)
     print('dict(vdvals) Note order ', dict(vdvals))
-    od =  OrderedDict(vdvals)
-    print('OrderedDict(vdvals)     ', od)
+
     vd = VolatileDict(vdvals)
     nl()
     print('New VDict from kv-pairs')
@@ -462,8 +453,7 @@ if __name__=='__main__':
     print('VDict(vdvals)      ', vd)
     print('VDict.keys() ', vd.keys())
     print('VDict.items() ', vd.items())
-    print('ODict.keys() ', od.keys())
-    print('ODict.items() ', od.items())
+
     # print('VDict.__class__ ', vd.__class__)
     # print('VDict.__class__.__name__ ', vd.__class__.__name__)
     # print('VDict.__qualname__ ', vd.__qualname__)     # not Python 3.9
@@ -530,7 +520,18 @@ if __name__=='__main__':
     print()
         
     print('instance ', isinstance(msg1, rmsgdef))
-    print('dir instance ', dir(msg1))
+    print('dir instance msg1 ', dir(msg1))
+    
+    
+    print()
+    print('Further ...')
+    vz = VolatileDict([('a', 1),('b',2),('c',3)])
+    print('vz ', vz )
+    print()
+    
+    print(dir(vz))
+ 
+    
     
     
 

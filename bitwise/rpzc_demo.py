@@ -16,15 +16,17 @@ try:
     from gc import mem_free, collect
     mem_free_present = True
     mem_start = mem_free()
-    from micropython import mem_info, qstr_info, stack_use
+    # from micropython import mem_info, qstr_info, stack_use
 except:
     mem_free_present = False
-    
+
+"""
 if mem_free_present:
     print('Starting memory, before imports, just gc and micropython funcs.')
     mem_info()
     qstr_info()    
-    stack_use() 
+    stack_use()
+"""
 
 
 from tablestore import TableStore, TableDef, ColDef, display_table, TableStoreError 
@@ -37,7 +39,7 @@ from liststore import datetime, timestamp
 
         
 
-class Member(TableStore):
+class Members(TableStore):
 
     _tdef = TableDef(tname = 'Member',
                      filename = 'member',
@@ -77,7 +79,7 @@ class Member(TableStore):
         
  
         
-class Project(TableStore):
+class Projects(TableStore):
     """Figure out how to rep benfactor = none"""
 
     _tdef = TableDef(tname = 'Project',
@@ -94,7 +96,7 @@ class Project(TableStore):
     
 
         
-class Role(TableStore):
+class Roles(TableStore):
     """Role -> Role Behavior. Note seriously non-relational structure. """ 
 
     _tdef = TableDef(tname = 'Role',
@@ -114,7 +116,7 @@ class Role(TableStore):
                       ['helper', ['newsletter','occasional_labor']]]   
         
         
-class ProjectMember(TableStore):
+class ProjectMembers(TableStore):
 
     _tdef = TableDef(tname = 'ProjectMember',
                      filename = 'projectmember',
@@ -138,7 +140,7 @@ class ProjectMember(TableStore):
                                         if r == 'benefactor'] 
         
         
-class Resource(TableStore):
+class Resources(TableStore):
     """Not sure what category is doing, like a rollup ?."""
 
     _tdef = TableDef(tname = 'Resource',
@@ -152,7 +154,7 @@ class Resource(TableStore):
     
         return self.get_column('resource')
         
-class ProjectResource(TableStore):
+class ProjectResources(TableStore):
 
     _tdef = TableDef(tname = 'ProjectResource',
                      filename = 'projectresource',
@@ -188,7 +190,7 @@ class ProjectResource(TableStore):
         
             
         
-class Event(TableStore):
+class Events(TableStore):
 
     _tdef = TableDef(tname = 'Event',
                      filename = 'event',
@@ -227,7 +229,7 @@ class RPZeroClub(DataStore):
                           RelationDef( 'Resource', 'resource', 'ProjectResource', 'resource'),
                           RelationDef( 'Project', 'projname', 'Event', 'projname')],
                            
-            table_defs = [Member, Project, Role, ProjectMember, Resource, ProjectResource, Event])
+            table_defs = [Members, Projects, Roles, ProjectMembers, Resources, ProjectResources, Events])
             # table defs in load order, par -> child 
 
 def display_dbdef(dbdef):
@@ -258,7 +260,7 @@ if __name__=='__main__':
     print('Member subclass of TableStore, without DataStore')
     nl()
 
-    mems = Member()
+    mems = Members()  # table class name
     
     data = [["Bill", "22 AnyWhere", "999-888-7777", "billb@xxx.net", 17, (2023, 6, 6, 9, 49, 57) ],
         ["Bob K.", "44 AnyWhere But Here", "222-333-4447", "bobk@yyy.net", 4],
@@ -279,7 +281,7 @@ if __name__=='__main__':
     
     print('Member Table Definition') 
     nl()
-    print(Member._tdef)
+    print(Members._tdef)
     nl()
     print('Deleting Member Table, creating RPZeroClub DB')
     nl()
@@ -309,8 +311,8 @@ if __name__=='__main__':
         ['Building The Future Corp.', '777 Dynomo Cresent'],
         ['PaleoAmericans4Progress.org', '333 Happy Acres Rest Home']]
      
-        
-    mems = rpzdb.Member
+
+    mems = rpzdb.Member  # db.attr table name versus Members class name
     
  
     mems.extend(memdata)
@@ -517,6 +519,7 @@ if __name__=='__main__':
         print(f"=== Memory Usage for MicroPython on {sys.platform} ===")
         print()
         print('High level executive summary - gc is very mysterious.')
+        """
         print('mem_info ')
         mem_info()
         print('qstr_info ')
@@ -525,6 +528,7 @@ if __name__=='__main__':
         stack_use()
         print('Compare to starting info. ')
         print()
+        """
         print('Total memory started: ', mem_start )
         print('Memory use to start of __main___ collected :', mem_start-main_start)
         print('Mem free at end: ', mem_free())

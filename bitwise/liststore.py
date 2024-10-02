@@ -1,6 +1,6 @@
 """
 module:     liststore
-version:    v0.4.1
+version:    v0.4.4
 sourcecode: https://github.com/billbreit/BitWiseApps
 copyleft:   2024 by Bill Breitmayer
 licence:    GNU GPL v3 or above
@@ -45,6 +45,8 @@ except:
     gc_present = False
 
 from collections import namedtuple
+
+# from lib.vdict import VolatileDict as vdict
 
 from lib.bitops import power2, bit_indexes, bitslice_insert, bit_remove
 
@@ -111,7 +113,7 @@ class ListStore(object):
 
 
     def __iter__(self) -> list[list]:
-        """Yeild columns as list of lists, an iterator over rows."""
+        """Yield columns as list of lists, an iterator over rows."""
 
         yield from [list(row) for row in zip(*self.store)]
 
@@ -129,8 +131,7 @@ class ListStore(object):
 
         return rc
 
-    # def values_changed(self, row: int) -> list[int]:
-    def values_changed(self, row: int) -> list:
+    def values_changed(self, row: int) -> list[int]:
         """Column indexes for values changed in a given row, probably working
         back from the return of rows_changed(). The values are then
         store[col][row1...col_len]"""
@@ -216,25 +217,43 @@ class ListStore(object):
 
         return self.store[self.slot_for_col(col_name)]
 
-    def get_row(self, slot: int) -> list:
+    def get_row(self, slot: int, asdict=False) -> list:  # or dict
         """Get a row, across all columns."""
 
         self.check_slot(slot)
-
-        return [self.store[i][slot] for i in range(len(self.column_names))]
-
-    def get_rows(self, int_or_list) -> list[list]:
-        """make rows from access mask,
-        if int_or_list is type int, make list of bitindexes"""
-
+        
+        row = [self.store[i][slot] for i in range(len(self.column_names))]
+        
+        if asdict:
+            return dict(zip(self.column_names, row ))
+        else:
+ 
+            return row
+            
+    def fetch_row(self, slot: int) -> list:
+        """Get row with automatic reset of columns changed"""
+    
+        row = self.get_row(slot)
+        self.reset_changed(slot)
+        return row
+    
+    @staticmethod        
+    def resolve_slots(int_or_list) -> list[int]:
+    
         if isinstance(int_or_list, int):
             if int_or_list == 0:
                 return []
 
             else:
-                int_list = bit_indexes(int_or_list)
+                return bit_indexes(int_or_list)
         else:
-            int_list = int_or_list
+            return int_or_list
+
+    def get_rows(self, int_or_list) -> list[list]:
+        """make rows from access mask,
+        if int_or_list is type int, make list of bitindexes"""
+           
+        int_list = self.resolve_slots(int_or_list)
 
         return [self.get_row(i) for i in int_list]
 
@@ -289,8 +308,8 @@ class ListStore(object):
            in any of the new rows prevents update of all rows
            in the list, something like a database transaction."""   
 
-        if list_of_lists is None:
-            raise ListStoreError("Extend: No input list provided.")
+        if list_of_lists is None or not isinstance(list_of_lists,( list, tuple )): 
+            raise ListStoreError("Extend: No input list or tuple provided.")
 
         # resolve defaults
         errs = []
@@ -315,6 +334,8 @@ class ListStore(object):
 
         if len(errs) > 0:
             raise ListStoreError("Extend Error: Not enough values or defaults", errs)
+            
+        # new_list is the input list with defaults
 
         save_top = self.length  # top_bit, that is last bit + 1
 
@@ -329,12 +350,12 @@ class ListStore(object):
             self.changed[i] = bitslice_insert(
                 self.changed[i],
                 save_top,
-                len(list_of_lists),
-                (1 << (len(list_of_lists))) - 1,
+                len(new_list),
+                (1 << (len(new_list))) - 1,
             )
 
         if self.indexer and self.indexer.index:
-            self.indexer.extend_index(list_of_lists)
+            self.indexer.extend_index(new_list)
 
     def pop(self, row: int) -> list:
         """Remove slots in liststore for a given row, and update all int
@@ -452,18 +473,29 @@ class TupleStoreError(Exception):
 class TupleStore(ListStore):
     """List-like storage for tuples, impemented with
     columns rather than rows.  Updatable without new instance.
+    
+    A bit tricky when subclassed as TableStore.  Currently, the
+    namedtuple 'typename' is a type of tuple when used as TupleStore.
+    When subclassed, the 'typename' is the same as the TableStore
+    table name.  This can be confusing because a Table named Customer
+    also has a tuple type Customer: a query Customer.find( 'name', 'Bob Smith')
+    would return Customer('Bob Smith', '222 Anyroad ... etc. ).
+    
+    Which Customer is *the* Customer ?  Easy to fix, but has an interesting
+    propery that Customer('Bob Smith' ... ) is only meaningful to the
+    Customer table.  The table owns the type. We'll see how it goes.  
     """
 
     def __init__(
         self,
-        nt_name: str,
+        nt_name: str,   # either nt 'type name' or nt 'table name'
         column_defs: list = None,
         defaults: list = None,
     ):
 
         super().__init__(column_defs, defaults)
 
-        self.nt_name = nt_name
+        self.nt_name = nt_name  # either naned tuple 'typename;
         self.ntuple_factory = namedtuple(nt_name, self.column_names)
 
     def __iter__(self) -> list[tuple]:
@@ -477,14 +509,22 @@ class TupleStore(ListStore):
         tp = self.resolve_defaults(tup_values)
         return self.ntuple_factory(*tp)
 
-    def get_row(self, slot: int) -> tuple:
-        """Get row using slot, return namedtuple."""
-        row = super().get_row(slot)
-        return self.ntuple_factory(*row)
+    def get_row(self, slot: int, asdict=False) -> tuple: # or dict
+        """Get row using slot, return namedtuple or dict."""
+        
+        row = super().get_row(slot, asdict)
+
+        if asdict:
+            return row # in dict form
+        else:    
+            return self.ntuple_factory(*row)
 
     def get_rows(self, int_or_list) -> list[tuple]:
+     
+        int_list = self.resolve_slots(int_or_list)
+           
+        return [self.get_row(i) for i in int_list]
 
-        return [self.ntuple_factory(*row) for row in super().get_rows(int_or_list)]
 
     def pop(self, slot: int) -> tuple:
         """pop slot number"""
@@ -495,9 +535,7 @@ class TupleStore(ListStore):
     def dump(self) -> list[tuple]:
         """ dump entire db as list of named tuples """
         yield from [self.ntuple_factory(*row) for row in zip(*self.store)]
-        # return [self.ntuple_factory(*row) for row in zip(*self.store)]
-
-
+   
 
 
 
@@ -525,7 +563,7 @@ if __name__ == "__main__":
     # Indexer class only usable with ListStore 
 
 
-#    from indexer import Indexer   # delta to below is 4K ???  
+#    from lib.indexer import Indexer   # delta to below is 4K ???  
     
 
     print("Test Script for ListStore/TupleStore ")
@@ -594,6 +632,14 @@ if __name__ == "__main__":
     print("ls.set(2, 'num_of_RPZeros', 27)")
     ls.set(2, "num_of_RPZeros", 27)
     nl()
+    
+    print("ls.get_row(4)")
+    print(ls.get_row(4))
+    nl()
+    
+    print("ls.get_row(4, asdict=True)")
+    print(ls.get_row(4, asdict=True))
+    nl()
 
     display_store(ls)
     nl()
@@ -656,14 +702,15 @@ if __name__ == "__main__":
     print("ntstore = TupleStore(nt_name = 'Testing',")
     print("                column_defs= [ 'aaa', 'bbb', 'ccc', 'ddd' ],")
     print("                defaults= [ 'default3', timestamp])")
-    print("                indexer = Indexer()")
     nl()
-
+    
     ntstore = TupleStore(
         nt_name="Testing",
         column_defs=["aaa", "bbb", "ccc", "ddd"],
         defaults=["default3", timestamp],
     )
+    
+    print('ntstore.set_indexer(Indexer)')
     ntstore.set_indexer(Indexer)
     nl()
 
@@ -704,6 +751,14 @@ if __name__ == "__main__":
     print("ntstore.reset_changed()")
     ntstore.reset_changed()
     nl()
+ 
+    print('ntstore.get_row(1)')   
+    print(ntstore.get_row(1))
+    nl()
+    
+    print('ntstore.get_row(1, asdict=True)')   
+    print(ntstore.get_row(1, asdict=True))
+    nl()   
 
     print("append(('test2','often', 'loot-based', 24 ))")
     ntstore.append(("test2", "often", "loot-based", 24))
@@ -744,8 +799,10 @@ if __name__ == "__main__":
 
     print("Reset changed function")
     print("changed ", ntstore.changed, bin(ntstore.changed[0]))
-    print("ntstore.reset_changed(7)")
-    ntstore.reset_changed(7)
+    print("ntstore.reset_changed(5)")
+    ntstore.reset_changed(5)
+    print("ntstore.fetch_row(7)")
+    print(ntstore.fetch_row(7))
     print("changed ", ntstore.changed, bin(ntstore.changed[0]))
     nl()
 
@@ -893,8 +950,8 @@ if __name__ == "__main__":
     print(ntstore.get_rows(ntstore.index["ccc"][888]))
     nl()
 
-    print("ntstore.index['aaa']['test1'] ", ntstore.index["aaa"]["test1"])
-    print("ntstore.index['bbb']['always'] ", ntstore.index["bbb"]["always"])
+    print("ntstore.index['aaa']['test1'] ", bin(ntstore.index["aaa"]["test1"]))
+    print("ntstore.index['bbb']['always'] ", bin(ntstore.index["bbb"]["always"]))
     nl()
     print("ntstore.index['aaa']['test1'] & ntstore.index['bbb']['always']")
     bmask = ntstore.index["aaa"]["test1"] & ntstore.index["bbb"]["always"]

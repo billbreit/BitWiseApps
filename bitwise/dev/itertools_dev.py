@@ -191,18 +191,27 @@ def groupby(iterable, key=None):
             for _ in curr_group:
                 pass
 
-def islice(iterable, *args):
+# def islice(iterable, *args):
+def islice(iterable, istart=None, istop=None, istep=None):
 
-    # can replace missing slice step in myp ?
     # islice('ABCDEFG', 2) → A B
     # islice('ABCDEFG', 2, 4) → C D
     # islice('ABCDEFG', 2, None) → C D E F G
     # islice('ABCDEFG', 0, None, 2) → A C E G
 
-    s = slice(*args)
+    """
+    s = slice(*args)  ## not on mpy !!!
+
     start = 0 if s.start is None else s.start
     stop = s.stop
     step = 1 if s.step is None else s.step
+    if start < 0 or (stop is not None and stop < 0) or step <= 0:
+        raise ValueError
+    """
+
+    start = 0 if istart is None else istart
+    stop = istop
+    step = 1 if istep is None else istep
     if start < 0 or (stop is not None and stop < 0) or step <= 0:
         raise ValueError
 
@@ -449,28 +458,39 @@ if __name__ == '__main__':
     print('dir(dropwhile) ', dir(dw))
     print()
 
-    print('list(dw) ', list(dw))
-    print('list(tw) ', list(tw))
+    print('list(dw) x<4 ', list(dw))
+    print('list(tw) x<4 ', list(tw))
 
-    print(*filtertrue(lambda x: x<5, chain(la, lb)))
-    print(*filterfalse(lambda x: x<5, chain(la, lb)))
+    print('filtertrue x<5 ', *filtertrue(lambda x: x<5, chain(la, lb)))
+    print('filterfalse x<5 ', *filterfalse(lambda x: x<5, chain(la, lb)))
     print()
 
+    print('flatten')
+    print()
     g = ( x for x in [ 1, 2, 3 ])
 
     items = [1, 2, ['hello', b'world'], g, ( 'able', 'bug', 'clat' ), [3, 4, {'five':5, 'six':6}, {'five':5, 'six':6}.items()], 8]
 
     # Produces 1 2 3 4 5 6 7 8
+    print('loop flatten ')
     for x in flatten(items):
         print(x, end=" " )
     print(end='\n\n')
 
+
+    print('list flatten')
     x = flatten(items)
     print(list(x))
 
     print({'five':5, 'six':6}.items())
 
-
+    print()
+    
+    print('testing islice() ')
+    print(list(islice('ABCDEFG', 2))) # -> A B
+    print(list(islice('ABCDEFG', 2, 4))) # -> C D
+    print(list(islice('ABCDEFG', 2, None))) # -> C D E F G
+    print(list(islice('ABCDEFG', 0, None, 2))) # -> A C E G
 
 
 
@@ -613,6 +633,7 @@ if __name__ == '__main__':
 
     x = const(3)
     print(x)
+
 
 
 

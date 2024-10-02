@@ -1,6 +1,6 @@
 """
 module:     tablestore
-version:    v0.4.1
+version:    v0.4.4
 sourcecode: https://github.com/billbreit/BitWiseApps
 copyleft:   2024 by Bill Breitmayer
 licence:    GNU GPL v3 or above
@@ -65,13 +65,12 @@ from liststore import TupleStore, datetime, timestamp
 from lib.fsutils import path_exists, path_separator
 
 
- 
-
-
 """TableDef - Table Definition,
-     tname:str,
-     filename:str,
-     unique:list[str],
+     tname:str, used for tuple name, and if subclassed and used in db,
+                appears as dbref.tname.  Good convention to make table
+                class name the plural of tname.  
+     filename:str,   filename.json
+     unique:list[str],  column names
      col_defs:list[ColDef]
 """
 TDef_fields = ['tname', 'filename',  'unique', 'col_defs']  # no _fields in mpy
@@ -79,8 +78,9 @@ TableDef = namedtuple('TableDef', TDef_fields)
 
 """ColDef - Column Definition,
      cname:str,
-     default:[pytpe|None],  # None means no default, may need to fiddle ptype(default) -> error
-     ptype:type
+     default:[pytpe|None],  default of prype.  None means no default, 
+              may need to fiddle ptype(default) -> error
+     ptype:type, python type
 """
 CDef_fields = [ 'cname', 'default', 'ptype' ]
 ColDef = namedtuple('ColDef', CDef_fields )
@@ -111,11 +111,8 @@ class TableStore(TupleStore):
 
         if self._tdef is not None:  # use subclass _tdef, will override input
             self.tdef = self._tdef
-            # print('_tdef is None ', self._tdef )
         else:
             self.tdef = tdef
-            # print('_tdef ', self._tdef )
-
     
         col_names = [ c.cname for c in self.tdef.col_defs]
         defaults = [ c.default for c in self.tdef.col_defs]
@@ -145,6 +142,7 @@ class TableStore(TupleStore):
             # child to parent, answers table row parents_exist ?
             self._crelations = [ CRelation( r.ccol, self.db.tabledict[r.parent], r.pcol  )
                                     for r in self.db.relations if r.child == self.tablename ]
+    
     @classmethod
     def _constructor( cls ):
         """Returns a table def including a class instance of itself as
@@ -278,7 +276,7 @@ class TableStore(TupleStore):
            If no errors, returned list will be empty.""" 
 
         if not isinstance(list_in, (list, tuple)) or list_in is None or list_in in [[],()]:
-            raise TableStoreError('Invalid List: list passed can not be None or empty')
+            raise TableStoreError('Invalid List: must provide list, not None or empty')
             
         err_list = []
         for pt, v in zip(self.ptypes, list_in):
@@ -313,10 +311,9 @@ class TableStore(TupleStore):
            Row is in relation as child is to parent, use _crelations"""
                 
         errors = []
-
-        rrow = self.resolve_defaults(row)
-        
+  
         if self.db:
+            rrow = self.resolve_defaults(row)
             for ccol, par, pcol in self._crelations:
  
                 pkey = rrow[self.slot_for_col(ccol)]
@@ -342,9 +339,9 @@ class TableStore(TupleStore):
         
         info = []
 
-        rrow = self.resolve_defaults(row)
 
         if self.db:
+            rrow = self.resolve_defaults(row)
             for pcol, child, ccol in self._prelations:
 
                 ckey = rrow[self.slot_for_col(pcol)]
@@ -362,7 +359,6 @@ class TableStore(TupleStore):
         if len(info) > 0:
             return True
         return False
-
         
     """Retrieve Rows/Columns """ 
 
@@ -372,19 +368,27 @@ class TableStore(TupleStore):
         if isinstance(key, str): key = [key]
     
         return super().get(self.find_unique(key), col_name)
-
         
-    def get_key(self, key:list ) -> tuple:
-        """ Get row with unique key, return tuple of values."""
-        
-        if isinstance(key, str): key = [key]
+    def fetch_key(self, key:list ) -> tuple:
+        """Find unique_row and pass slot to fetch row, resetting changed bit for row""" 
     
         slot = self.find_unique(key)
         
         if slot < 0:
             raise TableStoreError(f"Get Key Error: key '{key}' not found in {self.tablename}.") 
     
-        return super().get_row(slot)
+        return super().fetch_row(slot)
+        
+        
+    def get_key(self, key:list, asdict:bool=False ) -> tuple:
+        """ Get row with unique key, return tuple of values."""
+
+        slot = self.find_unique(key)
+        
+        if slot < 0:
+            raise TableStoreError(f"Get Key Error: key '{key}' not found in {self.tablename}.") 
+    
+        return super().get_row(slot, asdict)
 
             
     """Update Methods,
@@ -477,6 +481,9 @@ class TableStore(TupleStore):
     def find_unique( self, unique_key:list ) -> int:
         """Return a slot for a row matching list of values in unique key columns.
            Uses first key slot for store.index search """ 
+           
+        
+        if isinstance(unique_key, str): unique_key = [key]
         
         if len(unique_key) != len(self.unique_columns):
             raise TableStoreError(f"Find Unique: misformed key '{unique_key}', must have {len(self.unique_columns)} columns." )
@@ -544,9 +551,10 @@ class TableStore(TupleStore):
 
         
     def save(self, filename:str=None):
-        """Save TableStore to JSON."""
+        """Save TableStore or, trigger db.save_all and eventually this table
+           save, to a JSON file."""
         
-        # db will re-call table.save providing full 'dir/filename' path
+        # db will re-call table.save providing full 'db_dir/filename' path
         if self.db and not filename and filename != self.filename:
             self.db.save_all() 
     
@@ -568,12 +576,12 @@ class TableStore(TupleStore):
       dbname:str,
       dirname:str,
       relations:list[RelationDef],
-      table_defs:list[TableDef]
+      table_defs:list[TableDef], TableDef subclasses, in parent->child db load order
 """
 DBDef_fields = ['dbname', 'dirname', 'relations', 'table_defs']  # mpy has no _fields method
 DataStoreDef = namedtuple('DataStoreDef', DBDef_fields )
 
-"""DBTableDef - Table Definition for DB Table,
+"""DBTableDef - Table Definition for DB based on TableDef, for db, not the user
      tname:str,
      ttype:TableStore or subclass    # added to allow subclassing
      filename:str,
@@ -583,9 +591,9 @@ DataStoreDef = namedtuple('DataStoreDef', DBDef_fields )
 DBTDef_fields = ['tname', 'ttype', 'filename',  'unique', 'col_defs']  # no _fields in mpy
 DBTableDef = namedtuple('DBTableDef', DBTDef_fields)
 
-""" RelDef, Relation Definition -
+""" RelDef, Relation Definition - parent/pcol <-> child/ccol
       parent:str,
-      pcols:str,
+      pcol:str,
       child:str,
       ccol:str
 """ 
@@ -593,16 +601,16 @@ DBTableDef = namedtuple('DBTableDef', DBTDef_fields)
 RelDef_fields = [ 'parent', 'pcol', 'child', 'ccol' ]  # map single col
 RelationDef = namedtuple('RelationDef', RelDef_fields )   # from one to many
 
-""" Parent  Relation, is a parent to child, embedded in table - no delete if existing children
+""" Parent  Relation, is parent of child, embedded in table - no delete if existing children
       pcol:str,
       child:TableStore,  # looking down from one to many
       ccol:str
 """
 # PRel_fields = [ 'pcols', 'child', 'ccols' ]  map list pcols to list of col names
-PRel_fields = [ 'pcol', 'child', 'ccol' ]    # map single name to col, phase 1 ?
+PRel_fields = [ 'pcol', 'child', 'ccol' ]    # map single name to col, db id phase 2 ?
 PRelation = namedtuple('PRelation', PRel_fields ) 
 
-""" Child Relation, is child to parent, embedded in table - no add without existing parent
+""" Child Relation, is child of parent, embedded in table - no add without existing parent
       ccol:str,
       parent:TableStore,   # looking up from many to one
       pcol:str
@@ -631,7 +639,7 @@ class DataStore(object):
     _dbdef:DataStoreDef = None  # for subclassing, table_defs will be a list
                                 # of TableStore subclasses, not str table names,
                                 # must be subclass like [ TableClass1, TableClass2 ]
-                                # in parent -> child db load order.
+                                # in parent -> child 'topological' load order.
 
     def __init__(self, dbdef:DataStoreDef=None ):
     
@@ -648,7 +656,7 @@ class DataStore(object):
         if len({ tdef.tname for tdef in self.dbdef.table_defs }) != len([ tdef.tname for tdef in self.dbdef.table_defs ]):
             raise DataStoreError('DataStoreDef contains duplicate tables.')
         
-        self.tabledict = OrderedDict()  # maintain order, must load par->child
+        self.tabledict = OrderedDict()  # for mpy to maintain order, must load par->child
         for tdef in self.dbdef.table_defs:
             self.tabledict[tdef.tname] = tdef.ttype(tdef, self)
         
@@ -661,7 +669,7 @@ class DataStore(object):
             if n not in dir(self):
                 setattr(self, n, v)
             else:
-                raise DataStoreError(f'Table name {n} conflicts with a DataStore name.') 
+                raise DataStoreError(f'Table name {n} conflicts with a DataStore attr. name.') 
         
         if not path_exists(self.dbdef.dirname):
             os.mkdir(self.dbdef.dirname)
@@ -741,8 +749,7 @@ def display_table( tstore ):
     print('Columns changed ', [bin(i) for i in tstore.changed])
     print('Rows changed   ', bin(tstore.rows_changed()) )
     print()
-    # print('Rows changed indexes ', bit_indexes(lstore.rows_changed()))
-    # print('Rows deleted   ', bin(lstore._deleted))
+
     
 def display_dbdef(dbdef):
 
@@ -760,8 +767,7 @@ def display_dbdef(dbdef):
 if __name__ == '__main__':
 
     nl = print
-    
-    
+
     
     nl()
     print('=== Test of TableStore/DataStore Classes ===')
@@ -771,7 +777,7 @@ if __name__ == '__main__':
         collect()   # makes pico/esp32 more consistent
         main_start = mem_free()
         
-    # adds about 2k to base memory,
+    # adds about 2-3k to base memory,
     # also seems to force collect of import alloc  ?    
     from lib.indexer import Indexer 
 
@@ -779,7 +785,7 @@ if __name__ == '__main__':
     # User Type
     
     MyTuple = namedtuple('MyTuple', [ 'x', 'y', 'z'])
-    DateTime = namedtuple('DateTime', [ 'year', 'month', 'day', 'hour', 'min', 'secs' ])  # no millis or micros in myp ?
+    # DateTime = namedtuple('DateTime', [ 'year', 'month', 'day', 'hour', 'min', 'secs' ])  # no millis or micros in myp ?
     
     tdef = TableDef(tname = 'Test', filename = 'testing111', unique=['col1','col2'],
                      col_defs = [ColDef(cname='col1', default=None, ptype=str),
@@ -841,6 +847,14 @@ if __name__ == '__main__':
     print('Rows changed    ', bin(tstore.rows_changed()))
     nl()
     
+    print("tstore.fetch_key(['kk', 77]")
+    print(tstore.fetch_key(['kk', 77]))
+    nl()
+    
+    print('Columns changed ', [bin(i) for i in tstore.changed])
+    print('Rows changed    ', bin(tstore.rows_changed()))
+    nl()
+    
     print("Appending ['LLL', 230 ] ...")
     tstore.append(['LLL', 230, 22, {'aaa':None, 'BBB':123}, ['List of stuff', 'More stuff' ], ( 3, 4, 5 ), (1, 1, 1 ), True])
     print("Appending ['LLL', 230 ] ... again. ")
@@ -869,8 +883,13 @@ if __name__ == '__main__':
         print(t)
     nl()
     
+    print('tstore.keys()')
+    for k in tstore.keys():
+        print(k)
+    nl()
+    
     print("is_duplicate(['MMM', 0] ", tstore.is_duplicate(['MMM', 0]))
-    print("is_duplicate(['NNN', 5] ", tstore.is_duplicate(['NNN', 5]))
+    print("is_duplicate(['MMM', 3] ", tstore.is_duplicate(['MMM', 3]))
     
     print("is_duplicate(['NNN'] -> Error ")
     try:
@@ -888,9 +907,26 @@ if __name__ == '__main__':
         
     tstore.set(['d', 4 ], 'col2', 999 )
     tstore.set(['g', -2 ], 'col4', {'a':0})
+    
+    print('Columns changed ', [bin(i) for i in tstore.changed])
+    print('Rows changed    ', bin(tstore.rows_changed()))
+    nl()
+    print("tstore.fetch_key(['g', -2 ]")
+    print(tstore.fetch_key(['g', -2 ]))
+    print("tstore.fetch_key(['MMM', 3 ]")
+    print(tstore.fetch_key(['MMM', 3 ]))
+    nl()
+    print('Columns changed ', [bin(i) for i in tstore.changed])
+    print('Rows changed    ', bin(tstore.rows_changed()))
+    nl()
+ 
+ 
 
     sl = tstore.find_unique(['d', 999])
-    print("Get row ['d', 999]", tstore.get_key(['d', 999]))
+    print("Get_key row ['d', 999]" )
+    print(tstore.get_key(['d', 999]))
+    print("Get key  row ['d', 999], asdict=True")
+    print(tstore.get_key(['d', 999], asdict=True))
     nl()
     print("Get row {'g', -2]", tstore.get_key(['g', -2]))
     nl()
@@ -1015,9 +1051,10 @@ if __name__ == '__main__':
     print('dir(DataStore) instance ', dir(tdb))
     nl()
     for n, t in tdb.tables():
-        print('table ', n )
-        print('par ', t._prelations)
-        print('ch  ', t._crelations)
+        print('table    ', n )
+        print('instance ', t )
+        print('parent of', t._prelations)
+        print('child of ', t._crelations)
         nl()
         
     p1 = [  [ 'a', 'test a '],
@@ -1151,7 +1188,7 @@ if __name__ == '__main__':
     
     class MyTable(TableStore):
     
-        _tdef = TableDef(tname = 'MyTable', filename = 'mytable111', unique=['col1'],
+        _tdef = TableDef(tname = 'MyRow', filename = 'mytable111', unique=['col1'],
                      col_defs = [ColDef(cname='col1', default=None, ptype=str),
                                  ColDef(cname='col2', default=0, ptype=int),
                                  ColDef(cname='col3', default=0.0, ptype=float),
