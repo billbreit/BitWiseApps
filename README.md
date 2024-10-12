@@ -12,7 +12,7 @@ The directory structure:
 
 Current working modules:
 
-**iomapper.py**: A library for generalizing external bind requests, saving a lot of gory details about call structure and parameters.  Wtih a little logic thrown into the mix, it should provide a foundation for a farily simple process controller.   
+**iomapper.py**: A library for generalizing external bind requests, saving a lot of gory details about call structure and parameters.  Wtih a little logic thrown into the mix, it should provide a foundation for a fairly simple process engine.   
 
 #### bitwise/tests directory >
 
@@ -51,8 +51,7 @@ A base of common core Python/MicroPython libraries, slowly enlarging.  Note: the
 
 Most programs run in a small memory footprint, a base of about 40K, usable on anything from Raspberry Pi Pico and ESP32 microcontrollers to ... who knows what ( Windows and Linux, not sure about Mac ). 
 
-The current version is somewhere around 0.4.4. no matter what the code may say.  Last major update was mid-July.
-
+The current version is somewhere around 0.4.4. no matter what the code may say.  Last major update was early October.
  
 
 See [Wiki Page](https://github.com/billbreit/BitWiseApps/wiki)
