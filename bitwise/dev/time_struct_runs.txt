@@ -1,20 +1,34 @@
 
 
 
+=============================================
+=============================================
+
+RP400 Time (ms)         :  1608.770738
+Zero W Time             : 24348.211084
+RP Zero 2 W 64-bit Time :  4474.911874  
+RP Zero 2 W 32-bit Time :  5126.303029
+
 ====================== Python 3.9 on RP400 ================================
 
-List build comp (ms):  0.169647
+
+Python 3.9 on RP400
+
+===== dev init: in __init___ =====
+in dev.__init__ -> os.getcwd  /home/billb/Projects/python/bitwise/dev
+
+List build comp (ms):  0.350887
 Scale is :  256
-Repeats =  10
+Repeats =  100
 
 ##### First Round ... build dict #####
 
 dict len(dd):  256
-build dict with for k, v in lpairs loop (ms):  0.863104
+build dict with for k, v in lpairs loop (ms):  7.648262
 
 
 dict len(dd):  256
-build dict directly from dict(lpairs) (ms):  0.277016
+build dict directly from dict(lpairs) (ms):  2.684111
 
 Note: should be faster than loop ('repeat' versus 'repeat x scale'),
 but is slower on micropython Pico v.21, about same on Nano ESP32 v.22.
@@ -23,83 +37,391 @@ Compare to VDict, subclass of dict.
 ##### build OrderedDict #####
 
 Ordered Dict len(dd):  256
-Ordered Dict build (ms):  1.247785
+Ordered Dict build (ms):  11.228867
 
 ##### OrderedDict rewrites #####
 len(dd):  256
-Rewrites(ns):  0.965769
+Rewrites(ns):  8.677663
 
 dd gone
 
 ##### Second Round ... append/extend list  #####
-List Extend(ms):  0.028167
+List Extend(ms):  0.201925
 
-List Append(ms):  0.842733
+List Append(ms):  7.244728
 
 ### List index() Function ###
 
-List index() Function(ms):  12.496368
+List index() Function(ms):  126.392501
 
 
 ##### Third Round ... ListStore  #####
 
 ListStore append lpairs in loop.
-Append ListStore(ms):  16.980179
+Append ListStore(ms):  143.727568
 ls.length  256
 index  {}
 
 ListStore extend with lpairs.
-Extend ListStore(ms):  2.006333
+Extend ListStore(ms):  17.304751
 ls.length  256
 index  {}
 
 ### Index 'value' ###
 
-Index 'value' attr (ms):  3.940428
+Index 'value' attr (ms):  31.391025
 
-ls.index.keys()  {'value': {'ggggg': 1823497468304192053914503700924219021311338341191189984873347779652175269920, 'aaaaa': 7293989873216768215658014803696876085245353364764759939493391118608701079681, 'fffff': 911748734152096026957251850462109510655669170595594992436673889826087634960, 'bbbbb': 14587979746433536431316029607393752170490706729529519878986782237217402159362, 'ccccc': 29175959492867072862632059214787504340981413459059039757973564474434804318724, 'ddddd': 58351918985734145725264118429575008681962826918118079515947128948869608637448, 'hhhhh': 3646994936608384107829007401848438042622676682382379969746695559304350539840}}
+ls.index.keys()  {'value': {'bbbbb': 14587979746433536431316029607393752170490706729529519878986782237217402159362, 'ggggg': 1823497468304192053914503700924219021311338341191189984873347779652175269920, 'hhhhh': 3646994936608384107829007401848438042622676682382379969746695559304350539840, 'ddddd': 58351918985734145725264118429575008681962826918118079515947128948869608637448, 'ccccc': 29175959492867072862632059214787504340981413459059039757973564474434804318724, 'fffff': 911748734152096026957251850462109510655669170595594992436673889826087634960, 'aaaaa': 7293989873216768215658014803696876085245353364764759939493391118608701079681}}
 
 ### Use list index['value'][key] for int mask and get rows ###
 
-Get index for value[k] and get_rows with index (ms):  10.287036
+Get index for value[k] and get_rows with index (ms):  96.122414
 
 
 ### Use find() to get slot for 'key' ###
 using keys, len =  256
 
-Get slot for unqiue key in ls.key (ms):  13.149936
+Get slot for unqiue key in ls.key (ms):  132.362627
 
 
 ### Use find_all() to get slots for 'value' ###
-using vset  {'ggggg', 'aaaaa', 'fffff', 'bbbbb', 'ccccc', 'ddddd', 'hhhhh'}
+using vset  {'bbbbb', 'ggggg', 'hhhhh', 'ddddd', 'ccccc', 'fffff', 'aaaaa'}
 
-Get slots for duplicate values in ls.value (ms):  1.832613
+Get slots for duplicate values in ls.value (ms):  15.772947
 
 ##### Fourth Round ... TupleStore  #####
-Start time(ns):  1716064780942886225
-Extend TupleStore(ms):  8.19561
+Start time(ns):  1721864095612684202
+Extend TupleStore(ms):  42.655522
 index  {}
 
 ##### Fifth Round ... TablesStore  #####
-Start time(ns):  1716064780951226445
-Extend TableStore(ms):  60.603746
+Start time(ns):  1721864095655495685
+Extend TableStore(ms):  642.67549
 index  {}
 
 ##### Sixth Round ... VolatileDict  #####
-Start time(ns):  1716064781011979560
+Start time(ns):  1721864096298359711
 
-VolatileDict directly from tuple pairs (ms):  0.979676
+VolatileDict directly from tuple pairs (ms):  5.87933
 len(vdict)  256
 
-VolatileDict from vdict[k] = v in lpairs (ms):  33.266791
+VolatileDict from vdict[k] = v in lpairs (ms):  312.866182
 len(vdict)  256
 
 Result
-Time(ms):  170.418378
+Time(ms):  1608.770738
+
+
+===========================================
+
+
+RP Zero 2 W 32-bit Rasp OS Python 3.11
+
+
+===== dev init: in __init___ =====
+in dev.__init__ -> os.getcwd  /home/billb/Projects/python/bitwise/dev
+
+List build comp (ms):  0.374061
+Scale is :  256
+Repeats =  100
+
+##### First Round ... build dict #####
+
+dict len(dd):  256
+build dict with for k, v in lpairs loop (ms):  39.431071
+
+
+dict len(dd):  256
+build dict directly from dict(lpairs) (ms):  10.286151
+
+Note: should be faster than loop ('repeat' versus 'repeat x scale'),
+but is slower on micropython Pico v.21, about same on Nano ESP32 v.22.
+Compare to VDict, subclass of dict.
+
+##### build OrderedDict #####
+
+Ordered Dict len(dd):  256
+Ordered Dict build (ms):  51.251122
+
+##### OrderedDict rewrites #####
+len(dd):  256
+Rewrites(ns):  41.059188
+
+dd gone
+
+##### Second Round ... append/extend list  #####
+List Extend(ms):  0.684216
+
+List Append(ms):  30.612309
+
+### List index() Function ###
+
+List index() Function(ms):  532.817529
+
+
+##### Third Round ... ListStore  #####
+
+ListStore append lpairs in loop.
+Append ListStore(ms):  394.259044
+ls.length  256
+index  {}
+
+ListStore extend with lpairs.
+Extend ListStore(ms):  44.107091
+ls.length  256
+index  {}
+
+### Index 'value' ###
+
+Index 'value' attr (ms):  97.996743
+
+ls.index.keys()  {'value': {'ccccc': 29175959492867072862632059214787504340981413459059039757973564474434804318724, 'aaaaa': 7293989873216768215658014803696876085245353364764759939493391118608701079681, 'ddddd': 58351918985734145725264118429575008681962826918118079515947128948869608637448, 'hhhhh': 3646994936608384107829007401848438042622676682382379969746695559304350539840, 'ggggg': 1823497468304192053914503700924219021311338341191189984873347779652175269920, 'fffff': 911748734152096026957251850462109510655669170595594992436673889826087634960, 'bbbbb': 14587979746433536431316029607393752170490706729529519878986782237217402159362}}
+
+### Use list index['value'][key] for int mask and get rows ###
+
+Get index for value[k] and get_rows with index (ms):  308.028446
+
+
+### Use find() to get slot for 'key' ###
+using keys, len =  256
+
+Get slot for unqiue key in ls.key (ms):  506.761714
+
+
+### Use find_all() to get slots for 'value' ###
+using vset  {'ccccc', 'aaaaa', 'ddddd', 'hhhhh', 'ggggg', 'fffff', 'bbbbb'}
+
+Get slots for duplicate values in ls.value (ms):  54.679908
+
+##### Fourth Round ... TupleStore  #####
+Start time(ns):  1721860536702554816
+Extend TupleStore(ms):  94.161292
+index  {}
+
+##### Fifth Round ... TablesStore  #####
+Start time(ns):  1721860536797146263
+Extend TableStore(ms):  1664.572671
+index  {}
+
+##### Sixth Round ... VolatileDict  #####
+Start time(ns):  1721860538462064558
+
+VolatileDict directly from tuple pairs (ms):  22.022713
+len(vdict)  256
+
+VolatileDict from vdict[k] = v in lpairs (ms):  1227.139764
+len(vdict)  256
+
+Result
+Time(ms):  5126.303029
+# some variance with times of 5322...
+
+========================================================
 
 
 
-==============================================
+RP Zero 2 W 64-bit RaspOS Python 3.11
 
+
+===== dev init: in __init___ =====
+in dev.__init__ -> os.getcwd  /home/billb/Projects/python/bitwise/dev
+
+List build comp (ms):  0.316102
+Scale is :  256
+Repeats =  100
+
+##### First Round ... build dict #####
+
+dict len(dd):  256
+build dict with for k, v in lpairs loop (ms):  33.446494
+
+
+dict len(dd):  256
+build dict directly from dict(lpairs) (ms):  9.999234
+
+Note: should be faster than loop ('repeat' versus 'repeat x scale'),
+but is slower on micropython Pico v.21, about same on Nano ESP32 v.22.
+Compare to VDict, subclass of dict.
+
+##### build OrderedDict #####
+
+Ordered Dict len(dd):  256
+Ordered Dict build (ms):  44.634458
+
+##### OrderedDict rewrites #####
+len(dd):  256
+Rewrites(ns):  34.003488
+
+dd gone
+
+##### Second Round ... append/extend list  #####
+List Extend(ms):  0.770959
+
+List Append(ms):  25.73722
+
+### List index() Function ###
+
+List index() Function(ms):  443.343044
+
+
+##### Third Round ... ListStore  #####
+
+ListStore append lpairs in loop.
+Append ListStore(ms):  312.794875
+ls.length  256
+index  {}
+
+ListStore extend with lpairs.
+Extend ListStore(ms):  40.21865
+ls.length  256
+index  {}
+
+### Index 'value' ###
+
+Index 'value' attr (ms):  77.22742
+
+ls.index.keys()  {'value': {'ddddd': 58351918985734145725264118429575008681962826918118079515947128948869608637448, 'fffff': 911748734152096026957251850462109510655669170595594992436673889826087634960, 'hhhhh': 3646994936608384107829007401848438042622676682382379969746695559304350539840, 'ccccc': 29175959492867072862632059214787504340981413459059039757973564474434804318724, 'bbbbb': 14587979746433536431316029607393752170490706729529519878986782237217402159362, 'ggggg': 1823497468304192053914503700924219021311338341191189984873347779652175269920, 'aaaaa': 7293989873216768215658014803696876085245353364764759939493391118608701079681}}
+
+### Use list index['value'][key] for int mask and get rows ###
+
+Get index for value[k] and get_rows with index (ms):  254.230846
+
+
+### Use find() to get slot for 'key' ###
+using keys, len =  256
+
+Get slot for unqiue key in ls.key (ms):  460.321575
+
+
+### Use find_all() to get slots for 'value' ###
+using vset  {'ddddd', 'fffff', 'hhhhh', 'ccccc', 'bbbbb', 'ggggg', 'aaaaa'}
+
+Get slots for duplicate values in ls.value (ms):  46.871112
+
+##### Fourth Round ... TupleStore  #####
+Start time(ns):  1721861123052525064
+Extend TupleStore(ms):  95.457897
+index  {}
+
+##### Fifth Round ... TablesStore  #####
+Start time(ns):  1721861123148458703
+Extend TableStore(ms):  1503.266954
+index  {}
+
+##### Sixth Round ... VolatileDict  #####
+Start time(ns):  1721861124652063009
+
+VolatileDict directly from tuple pairs (ms):  19.698811
+len(vdict)  256
+
+VolatileDict from vdict[k] = v in lpairs (ms):  1065.625251
+len(vdict)  256
+
+Result
+Time(ms):  4474.911874
+# variance 4592 ms
+
+==================
+
+RP Zero W 32-bit with Python 3.9
+
+ 
+===== dev init: in __init___ =====
+in dev.__init__ -> os.getcwd  /home/billb/Projects/python/bitwise/dev
+
+List build comp (ms):  3.232999
+Scale is :  256
+Repeats =  100
+
+##### First Round ... build dict #####
+
+dict len(dd):  256
+build dict with for k, v in lpairs loop (ms):  87.148957
+
+
+dict len(dd):  256
+build dict directly from dict(lpairs) (ms):  25.374988
+
+Note: should be faster than loop ('repeat' versus 'repeat x scale'),
+but is slower on micropython Pico v.21, about same on Nano ESP32 v.22.
+Compare to VDict, subclass of dict.
+
+##### build OrderedDict #####
+
+Ordered Dict len(dd):  256
+Ordered Dict build (ms):  151.941928
+
+##### OrderedDict rewrites #####
+len(dd):  256
+Rewrites(ns):  105.87595
+
+dd gone
+
+##### Second Round ... append/extend list  #####
+List Extend(ms):  3.634998
+
+List Append(ms):  118.523944
+
+### List index() Function ###
+
+List index() Function(ms):  1424.474347
+
+
+##### Third Round ... ListStore  #####
+
+ListStore append lpairs in loop.
+Append ListStore(ms):  2524.786976
+ls.length  256
+index  {}
+
+ListStore extend with lpairs.
+Extend ListStore(ms):  264.648902
+ls.length  256
+index  {}
+
+### Index 'value' ###
+
+Index 'value' attr (ms):  559.770798
+
+ls.index.keys()  {'value': {'fffff': 911748734152096026957251850462109510655669170595594992436673889826087634960, 'hhhhh': 3646994936608384107829007401848438042622676682382379969746695559304350539840, 'ggggg': 1823497468304192053914503700924219021311338341191189984873347779652175269920, 'ccccc': 29175959492867072862632059214787504340981413459059039757973564474434804318724, 'bbbbb': 14587979746433536431316029607393752170490706729529519878986782237217402159362, 'aaaaa': 7293989873216768215658014803696876085245353364764759939493391118608701079681, 'ddddd': 58351918985734145725264118429575008681962826918118079515947128948869608637448}}
+
+### Use list index['value'][key] for int mask and get rows ###
+
+Get index for value[k] and get_rows with index (ms):  1616.249461
+
+
+### Use find() to get slot for 'key' ###
+using keys, len =  256
+
+Get slot for unqiue key in ls.key (ms):  1533.746549
+
+
+### Use find_all() to get slots for 'value' ###
+using vset  {'fffff', 'hhhhh', 'ggggg', 'ccccc', 'bbbbb', 'aaaaa', 'ddddd'}
+
+Get slots for duplicate values in ls.value (ms):  249.297932
+
+##### Fourth Round ... TupleStore  #####
+Start time(ns):  1721863341679150715
+Extend TupleStore(ms):  503.803865
+index  {}
+
+##### Fifth Round ... TablesStore  #####
+Start time(ns):  1721863342186508579
+Extend TableStore(ms):  10718.58248
+index  {}
+
+##### Sixth Round ... VolatileDict  #####
+Start time(ns):  1721863352908413059
+
+VolatileDict directly from tuple pairs (ms):  84.629997
+len(vdict)  256
+
+VolatileDict from vdict[k] = v in lpairs (ms):  4276.201053
+len(vdict)  256
+
+Result
+Time(ms):  24348.211084
+# variance from local almost nil
 
 

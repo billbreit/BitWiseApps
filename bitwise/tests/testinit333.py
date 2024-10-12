@@ -16,8 +16,11 @@ print()
 print('Importing init ...')
 print()
 
-
-import dev.init
+try:
+    import fsinit
+except:
+    import tests.fsinit as fsinit
+del(fsinit)
 
 # import dev.testinit2 # mpy no mod
 

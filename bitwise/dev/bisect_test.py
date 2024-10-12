@@ -1,12 +1,16 @@
 
 """Works on MicroPython """
 
+"""
 try:
     import bisect
+    from bitlogic import bit_length, bit_length_alt
 except:
-    import dev.bisect as bisect
-    
+"""
+
+import dev.bisect as bisect
 from dev.bitlogic import bit_length, bit_length_alt
+
 from gc import mem_free, mem_alloc
 
 

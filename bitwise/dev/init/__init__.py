@@ -100,14 +100,7 @@ def fix_paths(libs:list=None):
         print('cwd ', os.getcwd())
     print()
 
-    '''
-    else:
-        cwd = os.getcwd()
-        # if cwd == '/' is mpy, else is python root
-        parent_dir = cwd if cwd != '/' else '' 
-        print('parent dir is ', parent_dir )
-        '''
-                     
+                      
     for slib in mpy_libs:  #micropython, or python with parent dir and not.
         subpath = parent_dir + path_seperator() + slib
         print('in subpath section ', subpath )
@@ -120,13 +113,19 @@ def fix_paths(libs:list=None):
     
     return
 
-    if is_micropython() :  # a biggy, cwd default is always '/'
-        print('mpy -> os.pwd() ', os.getcwd())
-        if os.getcwd()=='/':
-            os.chdir(local_dir)
-            print('os.pwd() ', os.getcwd())
-        else:
-            print('not micropython')
+"""
+### Mess with cwd ?  In mpy production, setup.py and main.py will
+    load from /, so better not.  May need context manager to save/restore cwd.
+
+if is_micropython() :  # a biggy, cwd default is always '/'
+    print('mpy -> os.pwd() ', os.getcwd())
+    if os.getcwd()=='/':
+        os.chdir(local_dir)
+        print('os.pwd() ', os.getcwd())
+    else:
+        print('not micropython')
+"""
+
 print()
 
 print('sys.path: ' , sys.path)

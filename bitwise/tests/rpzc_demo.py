@@ -28,6 +28,11 @@ if mem_free_present:
     stack_use()
 """
 
+try:
+    import fsinit
+except:
+    import tests.fsinit as fsinit
+del(fsinit)
 
 from tablestore import TableStore, TableDef, ColDef, display_table, TableStoreError 
 from tablestore import DataStore, DataStoreDef, RelationDef, ColDef
