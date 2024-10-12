@@ -2,7 +2,7 @@
 
 A toolkit for creating small footprint, high performance applications with Binary Logic on Python and MicroPython platforms.
 
-All programs herein are 'under development', some parts maybe at the mid-beta phase, others not.
+All programs herein are 'under development', some parts maybe at the mid-moving-toward-late beta phase, others not.
 
 Almost all of them will run under both Python 3.9+ and MicroPython 1.20+ on the RP Pico and Arduino Nano ESP32.
 
@@ -10,17 +10,15 @@ The directory structure:
 
 #### bitwise dir >
 
-**liststore.py** - a multilist structure of columns and rows.  Intended to be quick and flexible: any row of any column can be of any valid Python type.  For a demo, run as 'python liststore.py'.
-    
-**tablestore.py** - a relational-like structure based on liststore with restrictions that implement:
+Current working modules:
 
-*Python Types*: enforce column type for any Python type that can be stored/recovered from JSON. 
+**iomapper.py**: A library for generalizing external bind requests, saving a lot of gory details about call structure and parameters.  Wtih a little logic thrown into the mix, it should provide a foundation for a farily simple process controller.   
 
-*Persistence*: save and restore a list of lists structure to/from a JSON file.  Restore tuple and namedtuple types not recognized by json.   
+#### bitwise/tests directory >
 
-*Uniqueness Constraints*: a key column or set of columns must form a unique key, in effect, naming a row.
+Basic tests/demos of major components:
 
-*Referential Integrity*: When multiple tables are defined within the DataStore class, the relationships between ( single column ) keys in tables are maintained: every child key must have a parent key and no parent with children can be deleted.
+**liststore and tablestore tests**:  taking liststore and tablestore out for a spin.  Much more fun than writing unit tests, although it may wind up with unit tests eventually.
 
 **rpzc_demo.py**: An extended demo of DataStore.  A non-trivial demo database of 7 tables and maybe 40 rows.
 
@@ -34,7 +32,21 @@ Experimental test stuff, mostly for bitwise/binary operations.
 
 #### bitwise/lib directory >
 
-A base of common core Python/MicroPython libraries, slowly enlarging.  Note: the '/lib' directory is in the default sys.path for micropython, the 'micropythonic standard'. 
+A base of common core Python/MicroPython libraries, slowly enlarging.  Note: the '/lib' directory is in the default sys.path for micropython, the 'micropythonic standard'.
+
+**liststore.py** - a multilist structure of columns and rows.  Intended to be quick and flexible: any row of any column can be of any valid Python type.  For a demo, run as 'python liststore.py'.
+    
+**tablestore.py** - a relational-like structure based on liststore with restrictions that implement:
+
+*Python Types*: enforce column type for any Python type that can be stored/recovered from JSON. 
+
+*Persistence*: save and restore a list of lists structure to/from a JSON file.  Restore tuple and namedtuple types not recognized by json.   
+*Uniqueness Constraints*: a key column or set of columns must form a unique key, in effect, naming a row.
+
+*Referential Integrity*: When multiple tables are defined within the DataStore class, the relationships between ( single column ) keys in tables are maintained: every child key must have a parent key and no parent with children can be deleted.
+
+**vdict.py** - VolatileDict for tracking changes to values in a dictionary.  Also provides read-only ( write-once ) locks on value updates. 
+ In a micropython environment, provides a faster alternative to mpy OrderedCollection ( default dict is not ordered ). 
 
 Most programs run in a small memory footprint, a base of about 40K, usable on anything from Raspberry Pi Pico and ESP32 microcontrollers to ... who knows what ( Windows and Linux, not sure about Mac ). 
 
