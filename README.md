@@ -18,11 +18,13 @@ Current working modules:
 
 Basic tests/demos of major components:
 
-**liststore and tablestore tests**:  taking liststore and tablestore out for a spin.  Much more fun than writing unit tests, although it may wind up with unit tests eventually.
+**liststore, tablestore and vdict tests**:  taking liststore, tablestore and vdict out for a spin.  Much more fun than writing unit tests, although it may wind up with unit tests eventually.
 
 **rpzc_demo.py**: An extended demo of DataStore.  A non-trivial demo database of 7 tables and maybe 40 rows.
 
-Budgets are tight, tensions are mounting, the entrenched old guard may be facing a life-or-death power struggle with younger members.  A time of revolution looms !  ( But not in this version of the demo.  Once I figure out an idiom for generator queries, then let slip discord and mayhem in the Raspberry Pi Zero Club. ) 
+> Budgets are tight, tensions are mounting, the entrenched old guard may be facing a life-or-death power struggle with younger members.  A time of revolution looms !
+
+But not in this version of the demo.  Once I figure out an idiom for generator queries, then let slip discord and mayhem in the Raspberry Pi Zero Club. 
 
 **testinit333.py**: A temporary test for a initialize filesystem function, still in development
 
@@ -34,7 +36,7 @@ Experimental test stuff, mostly for bitwise/binary operations.
 
 A base of common core Python/MicroPython libraries, slowly enlarging.  Note: the '/lib' directory is in the default sys.path for micropython, the 'micropythonic standard'.
 
-**liststore.py** - a multilist structure of columns and rows.  Intended to be quick and flexible: any row of any column can be of any valid Python type.  For a demo, run as 'python liststore.py'.
+**liststore.py** - a multilist structure of columns and rows.  Intended to be quick and flexible: any row of any column can be of any valid Python type.  For a demo, go the the /tests directory and run as 'python liststore_test.py' ( same for other modules ).
     
 **tablestore.py** - a relational-like structure based on liststore with restrictions that implement:
 
@@ -45,8 +47,7 @@ A base of common core Python/MicroPython libraries, slowly enlarging.  Note: the
 
 *Referential Integrity*: When multiple tables are defined within the DataStore class, the relationships between ( single column ) keys in tables are maintained: every child key must have a parent key and no parent with children can be deleted.
 
-**vdict.py** - VolatileDict for tracking changes to values in a dictionary.  Also provides read-only ( write-once ) locks on value updates. 
- In a micropython environment, provides a faster alternative to mpy OrderedCollection ( default dict is not ordered ). 
+**vdict.py** - VolatileDict for tracking changes to values in a dictionary.  Also provides read-only ( write-once ) locks on value updates.  In a micropython environment, provides a faster alternative to mpy OrderedCollection ( default dict is not ordered ). 
 
 Most programs run in a small memory footprint, a base of about 40K, usable on anything from Raspberry Pi Pico and ESP32 microcontrollers to ... who knows what ( Windows and Linux, not sure about Mac ). 
 
