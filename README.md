@@ -10,9 +10,11 @@ The directory structure:
 
 #### bitwise dir >
 
-Current working modules:
+Current work-in-progress modules:
 
-**iomapper.py**: A library for generalizing external bind requests, saving a lot of gory details about call structure and parameters.  Wtih a little logic thrown into the mix, it should provide a foundation for a fairly simple process engine.   
+**iomapper.py**: A library for generalizing external bind requests, saving a lot of gory details about call structure and parameters.  Wtih a little logic thrown into the mix, it should provide a foundation for a fairly simple process engine.
+
+IOMapper needs critical attention in two areas: marshalling/shoehorning parameters and handling exceptions.  Currently, the mapper is doing nothing to handle exceptions.  To keep the controller/process engine moving, it may be better to let the caller do the deciding, or maybe just 'neuter' the exceptions into error messages in the values_dict.  Explicitly raising IOMapper exceptions should probably be limited to the initial validation of iomap.   
 
 #### bitwise/lib directory >
 
