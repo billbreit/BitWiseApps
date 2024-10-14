@@ -91,7 +91,7 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
         """ Track changed items """
         
         if key in self.vkeys and key in self.read_only:
-            return  # or except ?
+            raise VolatileDictException(f"Read-Only Key: Can not change read-only key '{key}'") 
 
         super().__setitem__(key, value)
         if key not in self.vkeys:
@@ -102,7 +102,7 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
         """ Not really for volatile dict usage, set value to None or DELETED"""
         
         if key in self.read_only:
-            return  # or except ?
+            raise VolatileDictException(f"Read-Only Key: Can not delete read-only key '{key}'") 
         
         super().__delitem__(key)
         slot = self.vkeys.index(key)
@@ -175,7 +175,7 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
            relationships.  Better set value to DELETED"""
            
         if key in self.read_only:
-            return  # or except ?
+            raise VolatileDictException(f"Read-Only Key: Can not pop read-only key '{key}'") 
         if key not in self:
             raise  VolatileDictException(f"Key Pop Error: key '{key}' not found. No delete.")
         

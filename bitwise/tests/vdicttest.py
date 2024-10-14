@@ -126,19 +126,37 @@ if __name__=='__main__':
     print("vd.read_only.extend(['e','f', 'x'])")
     vd.read_only.extend(['e','f', 'x'])
     print('vd.read_only ', vd.read_only)
-    print("vd['f'] ", vd['f']) 
-    print("vd['f']=33")
-    vd['f']=33
-    print("vd['f'] ", vd['f'])
-    print("vd.pop('e')")
-    vd.pop('e')
-    print("vd['e'] ", vd['e'], ' ... still there.')
-    print("vd['x'] = 777")
-    vd['x'] = 777
-    print("vd['x'] ", vd['x'])
-    print("vd['x'] = 444")
-    vd['x'] = 444
-    print("vd['x'] ", vd['x']) 
+    nl()
+    print("vd['f'] -> ", vd['f'])
+    print("try: except: vd['f']=33")
+    try:
+        vd['f']=33
+    except VolatileDictException as e:
+        print(e)
+    nl()
+    print("'try: except: vd.pop('e')")
+    try:
+        vd.pop('e')
+    except VolatileDictException as e:
+        print(e)
+    nl()
+    print("'x' in vd ", 'x' in vd)
+    print("try: except: del(vd['x'])")
+    try:
+        del(vd['x'])
+    except VolatileDictException as e:
+        print(e)
+
+    nl()
+    print("do first write to ro key 'x'")
+    print("vd['x'] = 654")
+    vd['x'] = 654   
+    print("vd['x'] ->", vd['x'])
+    print("try: except: vd['x'] = 789")
+    try:
+        vd['x'] = 789
+    except VolatileDictException as e:
+        print(e)
     nl()
     
     

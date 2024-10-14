@@ -1,5 +1,4 @@
 """
-
 module:     iomapper
 version:    v0.0.1
 sourcecode: https://github.com/billbreit/BitWiseApps
@@ -7,6 +6,16 @@ copyleft:   2024 by Bill Breitmayer
 licence:    GNU GPL v3 or above
 author:     Bill Breitmayer
 
+IOMapper is a generalization of external bind requests, hiding details
+that the main 'controller' application doesn't need to know, the 
+gritty 'how to' mechanism of determining call structure and marshalling
+parameters.
+
+Use cases:
+- IOMapper subclassed with all object references in the namespace, ex.
+  See example below for 'Imaginary Devices'.
+- IOMapper gets all object references from the values dict.
+  See example for 'getters/setters'.  
 """
 
 
@@ -20,6 +29,22 @@ a_get, a_set = attrgetter, attrsetter   # by attribute, object
 
 DEBUG = False
 
+
+"""Poor man's typing"""
+def x():
+    return None
+   
+deftype = type(x)
+
+class XX():
+    def meth(self, x ):
+        return None
+        
+xx = XX() 
+
+methtype = type(xx.meth)
+
+del(x, xx, XX)
 
 """ ### Map ###
 
@@ -40,9 +65,7 @@ None          func(partial)  params to eval (list)  #   target(params)
 
 In all cases, if the vreturn==None or value in dict is same, the return is ignored.
 
-
 """
-
 mnames = ['wrap',     # get or set 'wrap action', or func call as a 'get' type
           'target',   # target of write ( update), wrap is setter
           'params',   # param of wrap if target = None, else params names for target
@@ -74,11 +97,14 @@ class IOMapper(object):
     
        When subclassed, becomes static info structure.  Will need to create
        IOM with kws: IOMapperSub(values=x) or just (None,x, None)
+       
+       @properties must be wrapped in attrgetter(propname).
+       
+       
     """
 
     _iomap = {}   # subclassed if not empty, are static structures
     _transforms = {}
-
 
     def __init__(self,
                  iomap:dict=None,
@@ -157,7 +183,6 @@ class IOMapper(object):
     def bind(self, wrap, target, params ) -> 'Any':
         """Bind either data in values dict or bind atribute in object.
            Similar to a simple function call, either wrapped or not."""
-           
         # if not hasattr(wrap, '__name__'):  # closure, not function, for mpy ?
 
         if DEBUG:
@@ -169,7 +194,6 @@ class IOMapper(object):
             
         if isinstance(params, str):
             params = [params]
-            
         
         if DEBUG: print('params ', params )
         
@@ -191,19 +215,20 @@ class IOMapper(object):
         
             if DEBUG: print('target is not None')
             if wrap is None:  
-                if evals:   # may not need
+                if evals:   # need ? 
                     if DEBUG:
                         print('params eval ', evals )
-                        print()
                     return target(*evals)
                 else:
-                    return target()
+                    if isinstance(target, (deftype, methtype)):  # others ?
+                        return target()
+                    else:  
+                        return target  # property ?, should be wrapped with attrgetter
             else:
                 if DEBUG:
                     print(f'setter for {wrap} with {evals}')
                     print()
                 return wrap(target, *evals)
-             
 
         raise IOMapperError(f"Can't bind {wrap} | {target} | {params} | {evals} -> .")
 
@@ -223,8 +248,7 @@ if __name__ == '__main__':
         ON:int  = 1
         
         def __init__(self, *args, **kwargs):
-        
-           
+
             self.state = self.OFF
             
         def set_state(self, new_state:int, verbose:bool=False ):
@@ -238,9 +262,7 @@ if __name__ == '__main__':
                     print('-> Unknown fan state: ', new_state) 
         
             self.state = new_state
-            
-            # return new_state  # may be able to sync return to fan_state 
-            
+         
         def get_state(self):
         
             return self.state
@@ -252,24 +274,30 @@ if __name__ == '__main__':
         RED:tuple   = ( 255, 0, 0 )
         GREEN:tuple = ( 0, 255, 0 )
         BLUE:tuple  = ( 0, 0, 255 )
-        LOW:int     = 20
-        HIGH:int    = 180
+        WHITE:tuple = ( 255, 255, 255 )
+        OFF:float   = 0.0    #  0.0 -> 1.0
+        ON:float    = 1.0
     
         def __init__(self, *args, **kwargs):
 
-            self.color = (0,0,0)        
-            self.intensity = 0
+            self.color:tuple = self.RED        
+            self.brightness:float = self.ON  
+                          
+        def set(self, color:tuple=None, brightness:float=None):
+            """led.set() works like reset to default"""
+        
+            if color:
+                self.color = color  
+            if brightness is not None:  # could be 0.0
+                self.brightness  = brightness
+       
+        @property
+        def get_state(self):
+        
+            return ( self.color, self.brightness )
             
-        def set(self, color, intensity):
-        
-            self.color = color
-            self.intensity
-        
-        def get(self ):
-        
-            return ( color, intensity )
-            
-    led = LED()       
+    led = LED() 
+    
 
     def temperature():
         return 20.2
@@ -287,28 +315,56 @@ if __name__ == '__main__':
                             params=None,
                             vreturn='room_temp',
                             chain=None ),
+                            
           'fan_on':       Map( wrap=None,   
                             target=partial(fan.set_state,verbose=True),
                             params=['fan_ON'],
                             vreturn=None ,
-                            chain='fan_status'),
+                            chain=['fan_status', 'led_GREEN']),
           'fan_off':      Map( wrap=None,   
                             target=fan.set_state,
                             params=['fan_OFF'],
                             vreturn=None,
-                            chain='fan_status'),
+                            chain=['fan_status', 'led_RED']),
           'fan_status':   Map( wrap=None,   
                             target=fan.get_state,
                             params=[],
                             vreturn='fan_state',
-                            chain=None),               
+                            chain=None),
+                            
+          'led_on':       Map( wrap=None,   
+                            target=led.set,
+                            params=[None, led.ON],  # need positional or partialed
+                            vreturn=None,
+                            chain='led_status'),
+          'led_off':      Map( wrap=None,   
+                            target=led.set,
+                            params=[None,led.OFF],
+                            vreturn=None,
+                            chain='led_status'),
+          'led_RED':       Map( wrap=None,   
+                            target=led.set,
+                            params=[led.RED],
+                            vreturn=None,
+                            chain='led_status'),
+          'led_GREEN':      Map( wrap=None,   
+                            target=led.set,
+                            params=[led.GREEN],
+                            vreturn=None,
+                            chain='led_status'),
+          'led_status':   Map( wrap=a_get('get_state'),  # @properties must be wrapped 
+                            target=None, 
+                            params=[led],
+                            vreturn='led_state',
+                            chain=None), 
                        
                        }
 
     vd = VolatileDict([('room_temp',10.1),
                       ('fan_ON', Fan.ON),
                       ('fan_OFF', Fan.OFF),
-                      ('fan_state', Fan.OFF)])  # only list of k/v tuple pairs
+                      ('fan_state', Fan.OFF),
+                      ('led_state', (LED.RED, LED.ON))])  # only list of k/v tuple pairs
                       
     vd.read_only.extend(['fan_ON', 'fan_OFF'])  # constants  
 
@@ -320,18 +376,24 @@ if __name__ == '__main__':
     print('dir(iom)')
     print(dir(iom))
     nl()
+    
+    print('iomap')
+    for k, v in iom.iomap.items():
+        print(k, ': ', v)
+    nl()
         
-    print('values before', vd )
+    print('values before: ', vd )
 
     print("iom.read('get_temp') ->", iom.read('get_temp'))
     
-    print('values after', vd )
-    
+    print('values after: ', vd )
+    nl()
     print('Directly set values in values dict')
     nl()
     
     vd['room_temp'] =  227.3
     vd['fan_state'] = 44
+    vd['led_state'] = 44
     print('values after incorrect update of ', vd )
     nl()
     
@@ -354,26 +416,29 @@ if __name__ == '__main__':
     iom.write('fan_on')
     nl()    
     checkstats(vd)
-    print('Note that function key chain updates value_dict[fan_state] \n\
-so fan_state is in sync with fan.ON.')
+    print("Note that function key chain updates value_dict 'fan_state' \n\
+and 'led_state' so values are in sync with fan.ON.")
     print()
     
 
-    print('reset')    
+    print('reset changed')    
     vd.reset()
+    nl()
     
     print("iom.write('fan_off'), should be verbose=False ")    
     iom.write('fan_off')
+    print("iom.write('led_off')")    
+    iom.write('led_off')
     nl() 
     
-    iom.read_into_values()
+    # iom.read_into_values()
     
     checkstats(vd)
     nl()
     
     del(iom)
     
-    
+
     print('### getters/setters ###') 
     
      
@@ -394,6 +459,7 @@ so fan_state is in sync with fan.ON.')
     
     some_tuple = ( 'Bill', '22 Anywhere Lane', '234-555-6789' )
 
+    # using values dict only, no direct obj references.
 
     iom2 = { 'so_get_a':     Map( wrap=a_get('a'),
                                  target=None,
@@ -442,6 +508,9 @@ so fan_state is in sync with fan.ON.')
                         ('phone', ''), ('some_tuple', some_tuple),
                         ('newval', 9999)])
                         
+    # constant references
+    vd2.read_only.extend(['some_obj', 'some_dict', 'some_list', 'some_tuple']) 
+                        
     
     nl()                    
     print('iom2')
@@ -487,5 +556,17 @@ so fan_state is in sync with fan.ON.')
     nl()
     checkstats(vd2)
     
-    print('Note that phone did not change but the value in values dict did.')
+    print("Note that phone did not change but the 'phone' value in values dict did.")
     nl()
+    
+    # print(iomap2.iomap['so_set_a'].params)
+    print('END')
+
+
+    print()
+
+
+    
+
+    
+    
