@@ -57,4 +57,4 @@ Most programs run in a small memory footprint, a base of about 40K, usable on an
 The current version is somewhere around 0.4.4. no matter what the code may say.  Last major update was early October.
  
 
-See [Wiki Page](https://github.com/billbreit/BitWiseApps/wiki)
+See [Home Wiki Page](https://github.com/billbreit/BitWiseApps/wiki)
