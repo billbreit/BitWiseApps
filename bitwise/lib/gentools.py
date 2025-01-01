@@ -1,10 +1,12 @@
 
 """ A full set of itertools functions, copped from Python 12 itertools
 documentation ("roughly equivalent to"), for micropython compatibility.
-Also good examples of generator constructs. """
+Also good examples of generator constructs.
 
-"""I've called this modules 'gentools' to avoid confusion ( my own ) with
-several semi-offical mpy modules called itertools. Warning: not fully tested.
+This module is called 'gentools' to avoid confusion ( my own ) with
+several semi-offical mpy modules called itertools.
+
+Warning: not fully tested.
 """
 
 # from operator

@@ -103,7 +103,8 @@ class ListStore(object):
             
         self.changed:list[int] = [0] * len(self.column_names) 
        
-        # needs to be set with Indexer class, no overhead if not used
+        # needs to be set via set_indexer() using Indexer class,
+        # no overhead if not used
         self.indexer = None 
 
 

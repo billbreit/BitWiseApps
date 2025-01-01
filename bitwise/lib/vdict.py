@@ -138,7 +138,7 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
     
         vd = VolatileDict(self.items())
         vd.changed = self.changed
-        vd.read_only = self.read_only
+        vd.read_only = self.read_only[:]
         vd.vkeys = self.vkeys[:]
         return vd
         

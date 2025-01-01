@@ -67,5 +67,7 @@ def itemsetter(*items):
                 obj[item] = value
     return func
 
+i_get, i_set = itemgetter, itemsetter   # by index: list, tuple or dict
+a_get, a_set = attrgetter, attrsetter 
 
 

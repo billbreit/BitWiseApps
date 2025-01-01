@@ -176,6 +176,17 @@ def one_bit_set(bint:int):
         
     return 0 == ( bint & (bint - 1))
     
+def more_than_one_bit_set(bint:int):
+    """Only one bit set in bint. 
+       alt -> if x!= 0: return 0 == (x & (x - 1)) """
+    
+    if not is_bitint(bint):
+        return None
+        
+    if bint == 0: return False
+        
+    return 0 != ( bint & (bint - 1))
+    
 def bit_length_alt(bint:int):
     """Position of highest non-zero bit""" 
     

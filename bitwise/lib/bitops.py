@@ -47,7 +47,28 @@ def bit_count(bint:int) -> int:
         count += 1
         
     return count
-
+    
+def one_bit_set(bint:int):
+    """Only one bit set in bint. 
+       alt -> if x!= 0: return 0 == (x & (x - 1)) """
+    
+    if not is_bitint(bint):
+        return None
+        
+    if bint == 0: return False
+        
+    return 0 == ( bint & (bint - 1))
+    
+def more_than_one_bit_set(bint:int):
+    """Only one bit set in bint. 
+       alt -> if x!= 0: return 0 == (x & (x - 1)) """
+    
+    if not is_bitint(bint):
+        return None
+        
+    if bint == 0: return False
+        
+    return 0 != ( bint & (bint - 1))
 
 def power2(power:int) -> int:
     """Replace pow2 with faster power function, only works with ints."""
