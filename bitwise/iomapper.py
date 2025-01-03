@@ -453,8 +453,7 @@ if __name__ == '__main__':
 
     vd.read_only.extend(['fan_ON', 'fan_OFF', 'led_off_param'])  # constants
 
-    trform = { 'other': int,
-              'get_temp': calibrate_temp }
+    trform = { 'get_temp': calibrate_temp }
     
     print('Value Dict ', vd)
 
