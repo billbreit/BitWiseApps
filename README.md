@@ -14,7 +14,13 @@ Current work-in-progress modules:
 
 **iomapper.py**: A module for generalizing external bind requests, saving a lot of gory details about call structure and parameters.  With a little logic thrown into the mix, it should provide a foundation for a fairly simple process engine.
 
-IOMapper needs critical attention in two areas: marshalling/shoehorning parameters and handling exceptions.  Currently, the mapper is doing nothing to handle exceptions.  To keep the controller/process engine moving, it may be better to let the caller do the deciding, or maybe just 'neuter' the exceptions into error messages in the values_dict.  Explicitly raising IOMapper exceptions should probably be limited to the initial validation of iomap.   
+IOMapper needs critical attention in two areas: marshalling/shoehorning parameters and handling exceptions.  Currently, the mapper is doing nothing to handle exceptions.  To keep the controller/process engine moving, it may be better to let the caller do the deciding, or maybe just 'neuter' the exceptions into error messages in the values_dict.  Explicitly raising IOMapper exceptions should probably be limited to the initial validation of iomap.
+
+Another major issue is debugging the defintion of the IOMap.  The IOMapper approach is as bug-free as the equivalent Python code would be, which is to say not bug free.  The advantage is that the definition bugs are all in one place rather than scattered through multi-Ks of code.  There a few tools to help debug a particular iomap - there need to be more.
+
+**fan_example.py**: A non-trivial example of IOMapper using a product design simulation for a cheap and outrageously unreliable fan, made with the cheapest parts availible ( with a one week money-back guarantee, which is slightly shorter than the expected life-time of the fan ).  Hey, I had to do the grind for multiple decades, so have some fun in my declining years ... and get in a dig at marketing.
+
+The fan example may also provide a basis for a simulation of a fairly complicated solar-powered water pump, to serve wildlife in deep drought situations.  See [Water for Wildlife project](https://github.com/billbreit/BitWiseApps/wiki/BinaryLogicApplications#basics-requirements-of-water-for-wildlife-project).
 
 #### bitwise/lib directory >
 
