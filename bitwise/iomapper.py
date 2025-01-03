@@ -182,8 +182,11 @@ class IOMapper(object):
                     self.values.update(self.local_vals)
                     print('in iom init ', self.values )
                     self.values.read_only.extend(self.local_vals.keys())
+                    
+            self.all_vreturns = [ k for k in self.iomap.keys()
+                                    if self.iomap[k].vreturn] # not None or [] 
 
-            self.read_into_values()  # auto initialize
+            self.read_into_values(self.all_vreturns)  # auto initialize, default 'all'
         else:
             raise IOMapperError('Need to provide non-empty dict of values')
 
@@ -234,13 +237,12 @@ class IOMapper(object):
            vreturn not None, wrap not None  , target is None, is getter
            vreturn not None, target not None, params is None, then is read ? """
            
-        if read_keys:
+        if read_keys:   # overrides 
             reads = read_keys  # override
         elif self.read_keys:
             reads = self.read_keys  # as defined
-        else:  # default, anything with vreturn
-            reads = [ k for k in self.iomap.keys()
-                     if self.iomap[k].vreturn] # not None or []
+        else:  
+            reads = self.all_vreturns # default, anything with vreturn
 
         for key in reads:
             if MDEBUG:

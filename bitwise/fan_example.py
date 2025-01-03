@@ -355,6 +355,8 @@ if __name__ == '__main__':
         actions = []
 
         if DEBUG: print('Keys changed:  ', iom.values.keys_changed(), '\n')
+        
+        # Implementation of Fan Mapper logic, state transitions 
 
         vd = iom.values  # values dict
 
