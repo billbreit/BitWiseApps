@@ -54,7 +54,7 @@ switch = Switch()
 ### device subclasses, or odd interfaces.
 
 class CheapFan(Fan):
-    """The Boss, in his wisdom, has decided use really cheap fans,
+    """The Boss, in his wisdom, has decided use really cheap fan motors,
         which overheat when the internal temp is over 42.0 C ( or
         whataver ) and that destroys the fan.  A fix cheaper
         than a thousand cheap fans ... now, how to deep six those
