@@ -23,7 +23,7 @@ from collections import namedtuple
 from lib.vdict import VolatileDict, checkstats
 from lib.getset import itemgetter, itemsetter, attrgetter, attrsetter
 i_get, i_set = itemgetter, itemsetter   # by index: list, tuple or dict
-a_get, a_set = attrgetter, attrsetter
+a_get, a_set = attrgetter, attrsetter   # by attr: object, namedtuple
 
 MDEBUG = False  # need for both code debugging and iomap debugging
 
@@ -72,7 +72,8 @@ To pass the dict itself as a parameter:
    Map.params=[{'myvar':123}] or
    Map.params='my_param' for 'my_param':[{'myvar':123}]
    
-Haven't figured out mixed positional and keyword calls. TBD
+Haven't figured out mixed positional and keyword calls, can pass a dict
+param to a stub function and let it resolve **dict keywords. TBD
 """
 
 mnames = ['wrap',     # wrapper: get or set 'wrap action', or func-> func as 'constructor'
@@ -137,9 +138,10 @@ class IOMapper(object):
 
     """
 
-    # for subclassing, helps keep namespace uncluttered
-    
-    _iomap:dict = None
+    # for 'subclassing', keeps namespace uncluttered
+
+    _values:VolatileDict = None   # dynamic    
+    _iomap:dict = None            # static
     _read_keys:list=None
     _local_values:dict = None
     _transforms:dict = None
@@ -157,8 +159,14 @@ class IOMapper(object):
             for k, v in values.items():
                 print(f"{k:12}: {v}")
             print()
-
-        if self._iomap:   # subclassed, override iomap
+            
+        if values:   # may be specialized, override _values default
+            self.values = values
+        else:
+            # will need to append vdict.read_only manually
+            self.values = self._values
+            
+        if self._iomap:   # specialized, override params, if any
             self.iomap = self._iomap
             self.read_keys = self._read_keys
             self.transforms = self._transforms
@@ -182,8 +190,7 @@ class IOMapper(object):
         if MDEBUG:
             print('IOMapper all vreturns ', self.all_vreturns ) 
 
-        if values:  # not None or empty
-            self.values = values
+        if self.values:  # not None or empty
             self.local_vals = self._local_values if self._local_values else local_vals
 
             # if local_vals, update values dict
@@ -238,7 +245,8 @@ class IOMapper(object):
 
     def write(self, key:str ) -> 'Any':
         """Reads/in and writes/out are the same thing from a mapping
-           perspective.  Strange construct but maybe more readable code. """
+           perspective.  Strange construct but maybe more readable code
+           to indicate an intended state change. """
 
         return self.read(key)
 
@@ -270,7 +278,7 @@ class IOMapper(object):
                      ' chain:', chain )
             v = self.bind(wrap, target, params)  # try exception and handle here ?
             if vreturn and v!=self.values[vreturn]:
-                if key in self.transforms and v is not None:
+                if key in self.transforms and v is not None:  # need to filter None ?
                     self.values[vreturn] = self.transforms[key](v)
                 else:
                     self.values[vreturn] = v  # whatever, may be None
@@ -292,6 +300,7 @@ class IOMapper(object):
 
         if MDEBUG: print('params ', params )
 
+        # resolve values for params
         if params:
             if isinstance(params, dict):
                 # is dict of keywords/values, func(**dict)
@@ -319,7 +328,7 @@ class IOMapper(object):
                     if MDEBUG:
                         print('params eval ', evals )
 
-                    if isinstance(evals, dict): # by keyword in dict
+                    if isinstance(evals, dict): # by keyword in dict, retest ?
                         if MDEBUG: print('In target(dict) - evals ', evals)
                         return target(**evals)
                     else:
@@ -347,62 +356,13 @@ if __name__ == '__main__':
     MDEBUG = True
 
     """Imaginary Devices"""
-
-    class Fan(object):
-
-        OFF:int = 0
-        ON:int  = 1
-
-        def __init__(self, *args, **kwargs):
-
-            self.state = self.OFF
-
-        def set_state(self, new_state:int, verbose:bool=False ):
-
-            if verbose:
-                if new_state == self.OFF:
-                    print('-> Turning fan OFF')
-                elif new_state == self.ON:
-                    print('-> Turning fan ON')
-                else:
-                    print('-> Unknown fan state: ', new_state)
-
-            self.state = new_state
-
-        def get_state(self):
-
-            return self.state
+    
+    from idevices import Fan, LED 
 
     fan = Fan()
-
-    class LED(object):
-
-        RED:tuple   = ( 255, 0, 0 )
-        GREEN:tuple = ( 0, 255, 0 )
-        BLUE:tuple  = ( 0, 0, 255 )
-        WHITE:tuple = ( 255, 255, 255 )
-        OFF:float   = 0.0    #  0.0 -> 1.0
-        ON:float    = 1.0
-
-        def __init__(self, *args, **kwargs):
-
-            self.color:tuple = self.RED
-            self.brightness:float = self.OFF
-
-        def set(self, color:tuple=None, brightness:float=None):
-            """Dual purpose function- color() and brightness()."""
-
-            if color:
-                self.color = color
-            if brightness is not None:  # could be 0.0
-                self.brightness  = brightness
-
-        @property
-        def get_state(self):
-
-            return ( self.color, self.brightness )
-
     led = LED()
+    
+    ### Stub/Helper Functions
   
     def temperature():
         return round(20 + ( 4 - 5*random()),2)
@@ -478,16 +438,12 @@ if __name__ == '__main__':
     trform = { 'get_temp': calibrate_temp }
     
     print('Value Dict ', vd)
+    print()
 
     iom = IOMapper(vd, iom, transforms=trform)
 
     # print('dir(iom)')
     # print(dir(iom))
-    nl()
-
-    print('iomap')
-    for k, v in iom.iomap.items():
-        print(k, ': ', v)
     nl()
 
     print('values before: ', vd )

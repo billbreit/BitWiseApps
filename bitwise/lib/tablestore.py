@@ -48,8 +48,6 @@ Known to run on Python 3.9+, micropython v1.20-22 on a Pico and Arduino Nano ESP
     
 """
 
-
-
 import os
 
 import json
@@ -89,7 +87,7 @@ class TableStore(TupleStore):
     _tdef:TableDef = None   # If _tdef not None, TableStore is subclassed.
                             # If subclassed as part of db, db will use table
                             # subclass instance in _constructor method.
-                            # Access any db table instance with 
+                            # Access any db table instance with either 
                             # db.table('tablename') or db.tablename
 
     
@@ -104,7 +102,7 @@ class TableStore(TupleStore):
 
         """
 
-        if self._tdef is not None:  # use subclass _tdef, will override input
+        if self._tdef is not None:  # use subclass _tdef, will override tdef
             self.tdef = self._tdef
         else:
             self.tdef = tdef

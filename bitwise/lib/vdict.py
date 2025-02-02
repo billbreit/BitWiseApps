@@ -58,7 +58,7 @@ class VolatileDictException(Exception):
 'update', 'values', '__bases__', '__dict__', 'fromkeys']
 """
 
-class VolatileDict(dict):   # faster, OrderedDict may not be availible
+class VolatileDict(dict):   # faster than MicroPython collections.OrderedDict
     """ Volatile Dictionary, tracks keys of changed items for notification/synching.
     
         - add/modify only, generally all keys will created before using dict
@@ -75,11 +75,11 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
     def __init__( self, *args, **kwargs ):
         
         super().__init__(*args, **kwargs)
-        self.vkeys = []    # ensure insert order, OrderedDict may not be avail.
-        self.changed = 0
-        self.read_only = []  # works like write-once, will add key/value if not in vdict,
-                             # then ignores further updates,  Can also set key and
-                             # then append key to read-only list, can also remove from list
+        self.vkeys:list = []    # ensure insert order, OrderedDict may not be avail.
+        self.changed:int = 0
+        self.read_only:list = []  # works like write-once, will add r/o 
+                                  # key/value if not in vdict, then ignores
+                                  # further updates. 
                 
         if len(args) > 0:
             if isinstance(args[0], dict):   # preserve insert order
@@ -87,7 +87,7 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
             self.vkeys = [ kv[0] for kv in args[0] ]
             self.changed |= power2(len(args[0]))-1
         
-    def __setitem__(self, key, value ):
+    def __setitem__(self, key:str, value:'Any' ):
         """ Track changed items """
         
         if key in self.vkeys and key in self.read_only:
@@ -98,7 +98,7 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
             self.vkeys.append(key)  # ensure insert order
         self.changed |= power2(self.vkeys.index(key))
 
-    def __delitem__(self, key):
+    def __delitem__(self, key:str):
         """ Not really for volatile dict usage, set value to None or DELETED"""
         
         if key in self.read_only:
@@ -162,7 +162,7 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
         """Maintaining order"""
         return [self[k] for k in self.vkeys]
         
-    def setdefault(self, key, value=None ):
+    def setdefault(self, key:str, value=None ) -> 'Any': 
         """If key not in dict, add with default. Then return current value."""
     
         if key not in self.keys():
@@ -170,7 +170,7 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
 
         return self[key]
     
-    def pop(self, key) -> 'value':
+    def pop(self, key:str) -> 'Any':
         """ Can be used, but not really useful for complex reader/writer
            relationships.  Better set value to DELETED"""
            
@@ -209,7 +209,7 @@ class VolatileDict(dict):   # faster, OrderedDict may not be availible
     def ischanged(self) -> bool:
         return self.changed != 0
         
-    def reset(self, key=None):
+    def reset(self, key:str=None):
         """ If no key, set changed to 0. If key, AND of NOT slot index into changed """
         
         if key is not None and key not in self.vkeys:

@@ -168,6 +168,8 @@ class  FanIOM(IOMapper):
         are defined in the IOEngine.
 
     """
+    
+    _values = None  # overridden by values parameter
 
     _iomap = {'get_temp': Map( wrap=None,
                             target=temperature,
@@ -325,7 +327,7 @@ if __name__ == '__main__':
                       ('thermstat_setting', 35.0),
 
                       ('led_state', (LED.RED, LED.ON)),
-                      ('led_off_param', {'brightness': led.OFF}),  # keywords, dict not list
+                      ('led_off_param', {'brightness': led.OFF}),  # dict keywords, not list
 
                       ])
 
@@ -336,7 +338,9 @@ if __name__ == '__main__':
     print('### Fan IOMapper Prototype ###')
     print()
 
-    iom = FanIOM(values=vd)
+    iom = FanIOM(values=vd)  # override default _values
+    
+    del(vd)
 
     print()
     print('### Starting IOMapper Run ###')
@@ -414,13 +418,14 @@ if __name__ == '__main__':
 
             run_cycle()
 
-            n += 1
-
             print('fan state:         ', ['off', 'on', 'suspended'][fanref.state])
             print('fan history:       ', fanref.state_history)
             print('fan internal_temp: ', round(fanref.internal_temp, 2))
             print('keys changed:      ', iom.values.keys_changed())
             print()
+            
+            
+            n += 1
 
     erun(iom, 16)
 
@@ -430,7 +435,7 @@ if __name__ == '__main__':
     print('### End run ')
     print('Values dict ->')
 
-    checkstats(vd)
+    checkstats(iom.values)
 
     # print(locals())
 
