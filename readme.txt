@@ -35,12 +35,13 @@ In the past year:
   JSON save/load mechanism.
 
 * vdict.py - VolatileDict Class, for tracking rapidly-changing values in a dictionary 
-  structure.  Keys are more or less static and can be locked as read-only.  This class
-  is a plug-in replacement for OrderedDict in MicroPython ( default dict is
-  unordered keys ).
+  structure.  Keys are more or less static and can be locked as read-only.   Default dict has 
+  ordered keys since Python 3.6, but MicroPython is based on Python 3.4. The vdict class
+  is a plug-in replacement for OrderedDict in MicroPython ( except for popitem, which defies 
+  any use-case I can imagine ) and with slightly better performance in older versions of mpy.
 
 The overall development phase is maybe mid beta, excluding an envisioned asynchronous 
-framework/mechanism based on asyncio, which may be at the slightly post pre-alpha stage.
+framework/mechanism based on asyncio, which may be in the post pre-alpha stage.
 
 Known compatibility is Python v3.9+ and micropython v1.20-22.0, running on
 the Raspberry Pi Pico and the Arduino Nano ESP 32. 
