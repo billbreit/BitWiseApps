@@ -17,12 +17,27 @@ foundation for developing what I call "binary logic applications".
 
 In the past months:
 
+* iomapper.py - A module for generalizing external bind requests.  In a world of movers and 
+  shakers, iomapper is a doer, a work engine.  It separates the unconditional logic from the 
+  conditional logic driving the iomapper.  A few conditional rules can describe fairly 
+  complex behaviors using the IOMapper class.   
+
+* fan_exampe.py - A simulation of the workings of a remarkably unuseful 'smart fan', slogan: 
+  "A Fan That's Smarter Than The People Who Buy It". 
+
+In the past year:
+
 * liststore.py - a list of lists structure with basic access and update methods,
   tracking changes to columns and rows, and column indexing for fast queries. 
 
-* tablestore.py - a database/graph-like structure with Python types for columns,
+* tablestore.py - a in-memory database/graph-like structure with Python types for columns,
   unique table keys, inter-table key reference integrity and a simple
   JSON save/load mechanism.
+
+* vdict.py - VolatileDict Class, for tracking rapidly-changing values in a dictionary 
+  structure.  Keys are more or less static and can be locked as read-only.  This class
+  is a plug-in replacement for OrderedDict in MicroPython ( default dict is
+  unordered keys ).
 
 The overall development phase is maybe mid beta, excluding an envisioned asynchronous 
 framework/mechanism based on asyncio, which may be at the slightly post pre-alpha stage.
