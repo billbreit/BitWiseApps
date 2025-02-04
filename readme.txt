@@ -17,13 +17,15 @@ foundation for developing what I call "binary logic applications".
 
 In the past months:
 
-* iomapper.py - A module for generalizing external bind requests.  In a world of movers and 
-  shakers, iomapper is a doer, a work engine.  It separates the unconditional logic from the 
-  conditional logic driving the iomapper.  A few conditional rules can describe fairly 
-  complex behaviors using the IOMapper class.   
+* iomapper.py - A module for generalizing external bind requests.  In a world
+  of movers and shakers, IOMapper is a doer, a work engine.  It separates
+  unconditional logic from the conditional logic driving the IOMapper class. 
+  A few conditional rules can describe fairly complex behaviors using the
+  IOMapper class.   
 
-* fan_example.py - A simulation of the workings of a remarkably unuseful 'smart fan', slogan: 
-  "A Fan That's Smarter Than The People Who Buy It". 
+* fan_example.py - A simulation of the workings of a remarkably  unuseful
+ 'smart fan' using a driver for FanIO mapping: the fan motor burns out at 42C.  
+  Slogan: "The Smart Fan That's Smarter Than The People Who Buy It". 
 
 In the past year:
 
@@ -47,7 +49,7 @@ Known compatibility is Python v3.9+ and micropython v1.20-22.0, running on
 the Raspberry Pi Pico and the Arduino Nano ESP 32. 
 
 To run a __name__=='__main__': style test script, start up a decent
-terminal, change current directory to point to /tests and run: 
+terminal, change current directory to /tests and run: 
 
 python liststore_test.py
 
