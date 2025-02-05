@@ -56,7 +56,9 @@ But not in this version of the demo.  Once I figure out an idiom for generator q
 
 #### bitwise/dev directory >
 
-Experimental test stuff, mostly for bitwise/binary operations.  
+Experimental test stuff, mostly for bitwise/binary operations.
+
+The file system init ( fsinit ) experiment has been a huge hastle.  MircoPython has no relative import, so I have struggled mightly to find a general solution to the import problems that plagued Python 2 and early Python 3.  Just when it seems fixed, phuuut, it's not !  Still looking for the sweet spot ...  
 
 Most programs run in a small memory footprint, a base of about 40K, usable on anything from Raspberry Pi Pico and ESP32 microcontrollers to ... who knows what ( Windows and Linux, not sure about Mac ). 
 
