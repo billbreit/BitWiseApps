@@ -26,7 +26,7 @@ The fan example may also provide a basis for a simulation of a fairly complicate
 
 A base of common core Python/MicroPython libraries, slowly enlarging.  Note: the '/lib' directory is in the default sys.path for micropython, the 'micropythonic standard'.
 
-**liststore.py** - a multilist structure of columns and rows.  Intended to be quick and flexible: any row of any column can be of any valid Python type.  For a demo, go the the /tests directory and run as 'python liststore_test.py' ( same for other modules ).
+**liststore.py** - a multilist structure of columns and rows.  Intended to be quick and flexible: any row of any column can be of any valid Python type.  Also allows indexing of immutable values ( values that can be dict keys ) and bitwise operations for fast queries.  For a demo, go the the /tests directory and run as 'python liststore_test.py' ( same for other modules ).
     
 **tablestore.py** - a relational-like structure based on liststore with restrictions that implement:
 
