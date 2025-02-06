@@ -15,10 +15,22 @@ except:
     import tests.fsinit as fsinit
 del(fsinit)
 
-from lib.liststore  import TupleStore    
-from lib.tablestore import TableStore, TableDef, TDef_fields, DataStore, DataStoreDef
-from lib.tablestore import ColDef, RelationDef, DBTableDef, timestamp, datetime, display_table
-from lib.tablestore import DBDef_fields
+import sys, os
+print('os.cwd ', os.getcwd())
+print('sys.path ', sys.path)
+
+### Something happened here.  fsinit was working and then it wasn't
+
+try:
+    from lib.liststore  import TupleStore    
+    from lib.tablestore import TableStore, TableDef, TDef_fields, DataStore, DataStoreDef
+    from lib.tablestore import ColDef, RelationDef, DBTableDef, timestamp, datetime, display_table
+    from lib.tablestore import DBDef_fields
+except:
+    from liststore  import TupleStore    
+    from tablestore import TableStore, TableDef, TDef_fields, DataStore, DataStoreDef
+    from tablestore import ColDef, RelationDef, DBTableDef, timestamp, datetime, display_table
+    from tablestore import DBDef_fields
 
 if __name__ == '__main__':
 
@@ -34,8 +46,11 @@ if __name__ == '__main__':
         main_start = mem_free()
         
     # adds about 2-3k to base memory,
-    # also seems to force collect of import alloc  ?    
-    from lib.indexer import Indexer 
+    # also seems to force collect of import alloc  ?
+    try:
+        from lib.indexer import Indexer
+    except:
+        from indexer import Indexer        
 
     
     # User Type
@@ -175,8 +190,6 @@ if __name__ == '__main__':
     print('Columns changed ', [bin(i) for i in tstore.changed])
     print('Rows changed    ', bin(tstore.rows_changed()))
     nl()
- 
- 
 
     sl = tstore.find_unique(['d', 999])
     print("Get_key row ['d', 999]" )
@@ -500,9 +513,9 @@ if __name__ == '__main__':
     print('sum of col3: ', mt.sum('col3')) 
     nl()
 
-    print('isinstance(mt, MyTable) ', isinstance(mt, MyTable))
+    print('isinstance(mt, MyTable)    ', isinstance(mt, MyTable))
     print('isinstance(mt, TableStore) ', isinstance(mt, TableStore))
-    print('isinstance(mt, TupleStore) ', isinstance(mt, TupleStore))
+    print('isinstance(mt, TupleStore) ', isinstance(mt, TupleStore), '  # why ?')
     nl()
     
     print('THE END ')

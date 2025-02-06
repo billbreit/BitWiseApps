@@ -1,6 +1,8 @@
 
-
-from lib.bitops import power2, bit_indexes, bitslice_insert, bit_remove
+try:
+    from lib.bitops import power2, bit_indexes, bitslice_insert, bit_remove
+except:
+    from bitops import power2, bit_indexes, bitslice_insert, bit_remove
 
 class IndexerError(Exception):
     pass

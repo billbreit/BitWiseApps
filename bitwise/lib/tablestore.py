@@ -55,7 +55,10 @@ from collections import namedtuple, OrderedDict
 
 from liststore import TupleStore, datetime, timestamp
 
-from lib.fsutils import path_exists, path_separator
+try:
+    from fsutils import path_exists, path_separator
+except:
+    from lib.fsutils import path_exists, path_separator
 
 
 """TableDef - Table Definition,
@@ -534,8 +537,6 @@ class TableStore(TupleStore):
             fname = filename + ".json"
         else:
             fname = self.filename + ".json"
-            
-        print('fname ', fname)
         
         with open( fname, "rt") as jfile:
             data = json.load(jfile)
@@ -756,6 +757,5 @@ def display_dbdef(dbdef):
     print()
     for i in range(len(dbdef.table_defs)):
         print( dbdef.table_defs[i])
-        print()            
-
+        print()  
 

@@ -40,7 +40,6 @@ methtype = type(xx.meth)
 
 del(x, xx, XX)
 
-
 """ ### Map ###
 
 Basic namedtuple structure for mapping requests to calls.
@@ -95,21 +94,22 @@ def mget( iom:dict, key:str ) -> tuple:
 """IOMapperDef
 
     iomap:dict - key/value action name/Map structures as above
+    
     read_keys:list[str] - action keys required to synch the values dict
                           with external state, triggering chain actions
     local_values:dict - export names:references of local objects to IOEngine
+
     transforms:dict - transform values returned into values in the values dict.
     
-    Used with values dict as IOMapper( values_dict, *iomapper_def ).
+    This structure is used with values dict as IOMapper(values_dict,*iomapper_def ).
     
-    Values dict must passed to IOMapper as externally owned.  On the other
-    hand, the keys in the values dict are so dependent on action keys
-    that this may change.
+    Values dict must be either be passed to IOMapper (externally owned), or 
+    defined in a specialized subclass with the option of overriding.  
 """
 
-iomapdef_fields = ['iomap', 'read_keys', 'local_values', 'transforms']
+iomapper_fields = ['iomap', 'read_keys', 'local_values', 'transforms']
 
-IOMapperDef = namedtuple('IOMapperDef', iomapdef_fields )
+IOMapperDef = namedtuple('IOMapperDef', iomapper_fields )
 
 
 class IOMapperError(Exception):
@@ -117,28 +117,26 @@ class IOMapperError(Exception):
 
 class IOMapper(object):
     """Fulfill data or function bind requests to IO actions using Map defs.
+    
+       - values:VolatileDict - dict with key/values for parameters and
+         returns.  Most of the actual activity is in set/get of k/vs
+         and then iom.read/bind using values dict values for parameters.
 
        - iomap:dict - bind request keywords and Map defintions.
-
-       - values:VolatileDict - *external* dict with key/values for parameters
-         and returns.  Most of the actual activity is in set/get of k/vs
-         and then iom.read/bind using values dict values for parameters.
          
-        - local_values - local 'external' object refs to add to value dict. Used
-          to augment or bypass iomapper, if necessary.
+       - local_values - local 'external' object refs to add to value dict.
+         Many be used externally to augment or bypass iomapper functions,
+         if necessary.  Can be passed as params, but better defined in
+         subclass. 
 
        - transforms:dict - massage return values ( ex. voltage -> degrees )
 
        When subclassed, becomes static info structure, more like a 
        specialization than a subclass.  May need to create IOM with
        kws: IOMapperSub(values=x) or just (None,x, None)
-
-
-       ###
-
     """
 
-    # for 'subclassing', keeps namespace uncluttered
+    # for 'subclassing' or specialization, keeps namespace uncluttered
 
     _values:VolatileDict = None   # dynamic    
     _iomap:dict = None            # static
@@ -155,9 +153,9 @@ class IOMapper(object):
         
         if MDEBUG:
             print('### In IOMapper __init__') 
-            print('Values Dict:')
-            for k, v in values.items():
-                print(f"{k:12}: {v}")
+            # print('Values Dict:')
+            # for k, v in values.items():
+            #    print(f"{k:12}: {v}")
             print()
             
         if values:   # may be specialized, override _values default
@@ -188,29 +186,35 @@ class IOMapper(object):
         self.all_vreturns = [ k for k in self.iomap.keys()
                                 if self.iomap[k].vreturn]  # not None and not ''
         if MDEBUG:
-            print('IOMapper all vreturns ', self.all_vreturns ) 
+            print('IOMapper: all vreturns ', self.all_vreturns ) 
 
         if self.values:  # not None or empty
+            if MDEBUG:
+                print('IOMapper: initial value: ', self.values)
+                print()
             self.local_vals = self._local_values if self._local_values else local_vals
 
             # if local_vals, update values dict
             if self.local_vals:
                 if MDEBUG:
-                    print('IOMapper _local values: ', self.local_vals)
+                    print('IOMapper: _local values: ', self.local_vals)
                     print()
-                    print('IOMapper values: ', self.values)
-                    print()
+
                 if set(self.local_vals).intersection(set(self.values)):
                     raise IOMapperError('Duplicate keys in values and local_values dicts.')
                 else:
                     self.values.update(self.local_vals)
                     # print('In IOM values init: ', self.values )
                     self.values.read_only.extend(self.local_vals.keys())
-                    
+
+            if MDEBUG:
+                print('Starting read_into_values') 
             self.read_into_values(self.all_vreturns)  # auto initialize, default 'all'
+            if MDEBUG:
+                print('IOMapper: values: ', self.values)
+                print()
         else:   # values None or {}
             raise IOMapperError('Need to provide non-empty dict of values')
-
 
     def read(self, key:str ) -> 'Any':
         """Bind a data/functional key/value. Read into the values dict."""
@@ -270,7 +274,6 @@ class IOMapper(object):
 
         for key in reads:
 
-             
             wrap, target, params, vreturn, chain = mget(self.iomap, key)
             if MDEBUG:
                 print()
@@ -317,8 +320,10 @@ class IOMapper(object):
 
             if MDEBUG:
                 print('target is None')
-                print()
-            return wrap(*evals)
+                # print()
+            result = wrap(*evals)
+            if MDEBUG:  print(f'bind() returning -> {result}')
+            return result
 
         else:   # target is function or setter
 
@@ -330,19 +335,21 @@ class IOMapper(object):
 
                     if isinstance(evals, dict): # by keyword in dict, retest ?
                         if MDEBUG: print('In target(dict) - evals ', evals)
-                        return target(**evals)
+                        result = target(**evals)
                     else:
-                        return target(*evals)
+                        result = target(*evals)
                 else:
                     if isinstance(target, (deftype, methtype)):  # others ?
-                        return target()
+                        result = target()
                     else:
-                        return target  # property ?, should be wrapped with attrgetter
+                        result = target  # property ?, should be wrapped with attrgetter
+
             else:  # is setter
-                if MDEBUG:
-                    print(f'setter for {wrap} with {evals}')
-                    print()
-                return wrap(target, *evals)
+                if MDEBUG: print(f'setter for {wrap}, with {target} {evals}')
+                result = wrap(target, *evals)
+                
+            if MDEBUG: print(f'bind() returning -> {result}')
+            return result
 
         raise IOMapperError(f"Can't bind {wrap} | {target} | {params} | {evals} -> .")
 
@@ -437,62 +444,64 @@ if __name__ == '__main__':
 
     trform = { 'get_temp': calibrate_temp }
     
-    print('Value Dict ', vd)
-    print()
+    # print('Value Dict ', vd)
+    # print()
 
     iom = IOMapper(vd, iom, transforms=trform)
+    
+    del(vd)
 
     # print('dir(iom)')
     # print(dir(iom))
     nl()
 
-    print('values before: ', vd )
-    nl()
+    print('values before get_temp: ', iom.values )
+
     print("iom.read('get_temp') ->", iom.read('get_temp'))
     nl()
-    print('values after: ', vd )
+    print('values after: ', iom.values )
     nl()
     print('Directly set values in values dict')
     nl()
 
-    vd['room_temp'] =  227.3
-    vd['fan_state'] = 44
-    vd['led_state'] = 44
-    print('values after incorrect update of ', vd )
+    iom.values['room_temp'] =  227.3
+    iom.values['fan_state'] = 44
+    iom.values['led_state'] = 44
+    print('values after incorrect update of ', iom.values )
     nl()
 
     print('Init values dict - read_into_values()')
     iom.read_into_values()
 
     nl()
-    checkstats(vd)
+    checkstats(iom.values)
     
     print('Reset and read_into_values() with intialized values dict')
-    vd.reset()
+    iom.values.reset()
     iom.read_into_values()
 
     nl()
-    checkstats(vd)
+    checkstats(iom.values)
 
-    print('value_dict fetch room_temp ->' , vd.fetch('room_temp'))
+    print('value_dict fetch room_temp ->' , iom.values.fetch('room_temp'))
     nl()
 
-    checkstats(vd)
+    checkstats(iom.values)
 
     print('reset changed')
-    vd.reset()
+    iom.values.reset()
     nl()
 
     print("iom.write('fan_on') -> partialed to verbose=True")
     iom.write('fan_on')
     nl()
-    checkstats(vd)
+    checkstats(iom.values)
     print("Note that function key chain updates value_dict 'fan_state' \n\
 and 'led_state' so values are in sync with fan.ON.")
     print()
 
     print('reset changed')
-    vd.reset()
+    iom.values.reset()
     nl()
 
     print("iom.write('fan_off'), should be verbose=False ")
@@ -501,14 +510,13 @@ and 'led_state' so values are in sync with fan.ON.")
     iom.write('led_off')
     nl()
 
-    checkstats(vd)
+    checkstats(iom.values)
     nl()
 
-    del(iom)
+    # del(iom)
 
-
-    print('### getters/setters ###')
-
+    print('### Test getters/setters ###')
+    nl()
 
     class SomeObject:
 
@@ -603,36 +611,42 @@ and 'led_state' so values are in sync with fan.ON.")
     nl()
 
     iomap2 = IOMapper(vd2, iom2)
+    
+    del(vd2, iom2)
 
     print("iomap2.read('so_get_a')")
-    print("-> ", iomap2.read('so_get_a'))
+    print("got -> ", iomap2.read('so_get_a'))
+    nl()
     print("iomap2.write('so_set_a')")
-    print('-> ', iomap2.write('so_set_a'))
-    print("vd2['some_obj'].a ")
-    print(vd2['some_obj'].a)
+    print('got -> ', iomap2.write('so_set_a'))
+    nl()
+    print("iomap2.values['some_obj'].a ")
+    print(iomap2.values['some_obj'].a)
     nl()
 
     print("iomap2.read('sd_get_seven')")
-    print("-> ", iomap2.read('sd_get_seven'))
+    print("got -> ", iomap2.read('sd_get_seven'))
+    nl()
     print("iomap2.write('sd_set_seven')")
-    print("-> ",  iomap2.write('sd_set_seven'))
+    print("got -> ",  iomap2.write('sd_set_seven'))
     nl()
 
     print("iomap2.read('sl_get_first')")
-    print("-> ", iomap2.read('sl_get_first'))
+    print("got -> ", iomap2.read('sl_get_first'))
+    nl()
     print("iomap2.write('sl_set_first')")
-    print("-> ",  iomap2.write('sl_set_first'))
+    print("got -> ",  iomap2.write('sl_set_first'))
     nl()
 
     print("iomap2.read('st_get_phone')")
-    print("-> ", iomap2.read('st_get_phone'))
+    print("got -> ", iomap2.read('st_get_phone'))
     nl()
     
     print("iomap2.read('snt_get_address')")
-    print("-> ", iomap2.read('snt_get_address'))
+    print("got -> ", iomap2.read('snt_get_address'))
     nl()
 
-    checkstats(vd2)
+    checkstats(iomap2.values)
 
     print("Note that phone did not change but the 'phone' value in values dict did.")
     nl()

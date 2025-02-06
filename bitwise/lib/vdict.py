@@ -67,9 +67,8 @@ class VolatileDict(dict):   # faster than MicroPython collections.OrderedDict
         - Can be used like OrderedDict where none, some low-memory upython builds.
         - Can only create vdict from k-v tuple pairs ( not dict ) to maintain order
           of entry, possibly from a database load.  Update does not enforce this. 
-        - Note: micropython base class inheritence is much improved, but it won't run 
-          on old versions of CircuitPython, Try OrderedDict, however OrderedDict
-          is often not availible on smaller or older mpy builds. 
+        - Note: MicroPython base class inheritence is much improved, but vdict won't
+          run on CircuitPython which adheres to older versions of mpy. 
     """
     
     def __init__( self, *args, **kwargs ):
@@ -82,7 +81,7 @@ class VolatileDict(dict):   # faster than MicroPython collections.OrderedDict
                                   # further updates. 
                 
         if len(args) > 0:
-            if isinstance(args[0], dict):   # preserve insert order
+            if isinstance(args[0], dict):   # preserve insert order, may need param strict=True
                 raise  VolatileDictException(f'Init Error: can only create vdict from tuple pairs.')
             self.vkeys = [ kv[0] for kv in args[0] ]
             self.changed |= power2(len(args[0]))-1
@@ -177,7 +176,7 @@ class VolatileDict(dict):   # faster than MicroPython collections.OrderedDict
         if key in self.read_only:
             raise VolatileDictException(f"Read-Only Key: Can not pop read-only key '{key}'") 
         if key not in self:
-            raise  VolatileDictException(f"Key Pop Error: key '{key}' not found. No delete.")
+            raise  VolatileDictException(f"Key Pop Error: key '{key}' not found.")
         
         item = super().pop(key)
         slot = self.vkeys.index(key)

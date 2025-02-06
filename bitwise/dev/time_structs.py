@@ -29,6 +29,7 @@ fix_paths()
 
 from liststore import ListStore, TupleStore
 from tablestore import TableStore, TableDef, ColDef
+from indexer import Indexer
 
 from dev.vdict import VolatileDict
 
@@ -108,7 +109,7 @@ del(dd)
 startt = monotonic_ns()
 
 for i in range(ntest):
-    dd = {}
+    # dd = {}
     dd = dict(lpairs)
         
 stopt = monotonic_ns()
@@ -131,17 +132,23 @@ if mem_free_avail: collect()
 
 startt = monotonic_ns()
 
+"""
 for i in range(ntest):
     dd = OrderedDict()
     for k, v in lpairs:
-        dd[k] =  v  
+        dd[k] =  v
+"""
+
+for i in range(ntest):
+
+    dd = OrderedDict(lpairs)
 
         
 stopt = monotonic_ns()
 print()
 
 print('Ordered Dict len(dd): ', len(dd))
-print('Ordered Dict build (ms): ', (stopt - startt)/tscale)
+print('Ordered Dict build ( no loop - lpairs (ms): ', (stopt - startt)/tscale)
 
 if mem_free_avail:
     print('Mem use after Ordered Dict build: ', start_mem - mem_free() )
@@ -294,6 +301,8 @@ print()
 print("### Index 'value' ###")
 print()
 startt = monotonic_ns()
+
+ls.set_indexer(Indexer)
 
 for i in range(ntest):
     ls.index_attr('value')
@@ -459,6 +468,7 @@ stopt = monotonic_ns()
 
 
 print('VolatileDict from vdict[k] = v in lpairs (ms): ', (stopt - startt)/tscale)
+print('Very slow !')
 print('len(vdict) ', len(vdict))
 
 endtotalt = monotonic_ns()  

@@ -43,7 +43,10 @@ from collections import namedtuple
 
 # from lib.vdict import VolatileDict as vdict
 
-from lib.bitops import power2, bit_indexes, bitslice_insert, bit_remove
+try:
+    from bitops import power2, bit_indexes, bitslice_insert, bit_remove
+except:
+    from lib.bitops import power2, bit_indexes, bitslice_insert, bit_remove
 
 from time import localtime
 
