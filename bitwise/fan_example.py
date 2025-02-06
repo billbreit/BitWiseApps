@@ -46,7 +46,7 @@ from lib.gentools import chain
 from lib.bitops import power2, bit_indexes
 # from lib.evaluator import Evaluator, Condition
 
-from lib.vdict import VolatileDict, checkstats
+from lib.vdict import VolatileDict, RO, checkstats
 from lib.getset import itemgetter, itemsetter, attrgetter, attrsetter
 
 i_get, i_set = itemgetter, itemsetter   # by index: list, tuple or dict
@@ -178,26 +178,27 @@ class  FanIOM(IOMapper):
 
     """
      # _values can be None,overridden by values parameter
+     # RO flag k/v as read only
     _values = VolatileDict([('room_temp',10.1),
                       ('temp_history', [ 0.0, 0.0, 0.0, 0.0 ]),
                       ('upper_limit', 35.5),
                       ('lower_limit', 34.5 ),
 
-                      ('fan_ON', Fan.ON),
-                      ('fan_OFF', Fan.OFF),
-                      ('fan_SUSPEND', CheapFan.SUSPEND),
-                      ('fan_UNSUSPEND', CheapFan.UNSUSPEND),
+                      RO('fan_ON', Fan.ON),
+                      RO('fan_OFF', Fan.OFF),
+                      RO('fan_SUSPEND', CheapFan.SUSPEND),
+                      RO('fan_UNSUSPEND', CheapFan.UNSUSPEND),
                       ('fan_state', Fan.OFF),
                       ('fan_overheated', False),
 
-                      ('switch_ON', Switch.ON),
-                      ('switch_OFF', Switch.OFF),
+                      RO('switch_ON', Switch.ON),
+                      RO('switch_OFF', Switch.OFF),
                       ('switch_state', Switch.OFF),
 
                       ('thermstat_setting', 35.0),
 
                       ('led_state', (LED.RED, LED.ON)),
-                      ('led_off_param', {'brightness': led.OFF}),  # dict keywords, not list
+                      RO('led_off_param', {'brightness': led.OFF}),  # dict keywords, not list
 
                       ])
 
@@ -342,18 +343,40 @@ if __name__ == '__main__':
     print('### Fan IOMapper Prototype ###')
     print()
 
-    iom = FanIOM()  # override default _values
-    
-    # bad form, violates ownership in a way
-    iom.values.read_only.extend(['fan_ON', 'fan_OFF', 'fan_SUSPEND', 'fan_UNSUSPEND', 'switch_ON',
-                           'switch_OFF', 'led_off_param'])  # constants
+    iom = FanIOM()  # use default _values dict
     print()
     print('### Starting IOMapper Run ###')
     print()
 
-    # read_keys = ['get_temp', 'update_temp_hist', 'update_fan_hist', 'fan_overheating', ]
-
     def run_cycle():
+    
+        """
+        Equivalent conditions 
+        
+        conditions = { 'fan_suspend':
+                     [Condition('fan_overheated', 'eq', True ),
+                     Condition('fan_state', 'eq', 'fan_ON' )],
+
+                'fan_unsuspend': 
+                    [Condition('fan_overheated', 'eq', False ),
+                    Condition('fan_state', 'eq', 'fan_SUSPEND' )],
+
+                'fan_on' : [
+                    [Condition('fan_overheated', 'eq', False ),
+                     Condition('fan_state', 'eq', 'fan_OFF' ),
+                     Condition('room_temp', 'gt', 'upper_limit')],
+
+                    [Condition('fan_overheated', 'eq', False ),  # OR
+                     Condition('fan_state', 'eq', 'fan_OFF' ),
+                     Condition('switch_state', 'eq', 'switch_ON')]],
+
+                'fan_off':
+                    [Condition('fan_overheated', 'eq', False ),
+                     Condition('fan_state', 'eq', 'fan_ON' ),
+                     Condition('switch_state', 'eq', 'switch_OFF'),
+                     Condition('room_temp', 'lt', 'lower_limit')]
+              }
+        """
 
         iom.values.reset()
 
@@ -394,6 +417,8 @@ if __name__ == '__main__':
                 pass # debugging, no action
 
     def erun(iom, limit:int):
+    
+
 
         n = 1
 

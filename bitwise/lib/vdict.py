@@ -49,6 +49,8 @@ except:
 DELETED = namedtuple('DELETED',[])      # as class
 # DELETED = namedtuple('DELETED',[])()  # as instance, not class
 
+RO = namedtuple('RO', ['key', 'value']) # dict _init_, flag k/v tuple as read only
+
 class VolatileDictException(Exception):
     pass
 
@@ -59,14 +61,25 @@ class VolatileDictException(Exception):
 """
 
 class VolatileDict(dict):   # faster than MicroPython collections.OrderedDict
-    """ Volatile Dictionary, tracks keys of changed items for notification/synching.
+    """ Volatile Dictionary, tracks keys of changed items for
+         notification/synching.
     
         - add/modify only, generally all keys will created before using dict
+        
         - Using delete flags rather than del, pop guarantees validity of all shared
+        
           access masks across clients.  Not thread-safe without lock.
+          
         - Can be used like OrderedDict where none, some low-memory upython builds.
+        
         - Can only create vdict from k-v tuple pairs ( not dict ) to maintain order
-          of entry, possibly from a database load.  Update does not enforce this. 
+          of entry, possibly from a database load.  Update does not enforce this
+          for possilby unordered dict.
+          
+        - Can set dict keys to read only when creating from k/v tuple list, 
+          flag k/vs as RO ( read only ) via RO namedtuple.  For example,
+          VolatileDict([['rw_key', 123 ), RO('ro_key', 123)])
+          
         - Note: MicroPython base class inheritence is much improved, but vdict won't
           run on CircuitPython which adheres to older versions of mpy. 
     """
@@ -85,6 +98,7 @@ class VolatileDict(dict):   # faster than MicroPython collections.OrderedDict
                 raise  VolatileDictException(f'Init Error: can only create vdict from tuple pairs.')
             self.vkeys = [ kv[0] for kv in args[0] ]
             self.changed |= power2(len(args[0]))-1
+            self.read_only = [ kv.key for kv in args[0] if isinstance(kv, RO )]
         
     def __setitem__(self, key:str, value:'Any' ):
         """ Track changed items """

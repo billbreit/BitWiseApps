@@ -20,7 +20,7 @@ Use cases:
 
 from functools import partial
 from collections import namedtuple
-from lib.vdict import VolatileDict, checkstats
+from lib.vdict import VolatileDict, RO, checkstats
 from lib.getset import itemgetter, itemsetter, attrgetter, attrsetter
 i_get, i_set = itemgetter, itemsetter   # by index: list, tuple or dict
 a_get, a_set = attrgetter, attrsetter   # by attr: object, namedtuple
@@ -93,6 +93,9 @@ def mget( iom:dict, key:str ) -> tuple:
 
 """IOMapperDef
 
+    values:VolatileDict - source of all values, very dynamic.
+                          Can be defined and owned externally to iomapper.
+
     iomap:dict - key/value action name/Map structures as above
     
     read_keys:list[str] - action keys required to synch the values dict
@@ -107,7 +110,7 @@ def mget( iom:dict, key:str ) -> tuple:
     defined in a specialized subclass with the option of overriding.  
 """
 
-iomapper_fields = ['iomap', 'read_keys', 'local_values', 'transforms']
+iomapper_fields = ['values', 'iomap', 'read_keys', 'local_values', 'transforms']
 
 IOMapperDef = namedtuple('IOMapperDef', iomapper_fields )
 
@@ -132,14 +135,14 @@ class IOMapper(object):
        - transforms:dict - massage return values ( ex. voltage -> degrees )
 
        When subclassed, becomes static info structure, more like a 
-       specialization than a subclass.  May need to create IOM with
-       kws: IOMapperSub(values=x) or just (None,x, None)
+       specialization than a subclass.
     """
 
     # for 'subclassing' or specialization, keeps namespace uncluttered
 
-    _values:VolatileDict = None   # dynamic    
-    _iomap:dict = None            # static
+    _values:VolatileDict = None  # dynamic, can be None in subclass def
+                                 # and then passed to __init__
+    _iomap:dict = None           # the rest are static
     _read_keys:list=None
     _local_values:dict = None
     _transforms:dict = None
@@ -433,14 +436,12 @@ if __name__ == '__main__':
                        }
 
     vd = VolatileDict([('room_temp',10.1),
-                      ('fan_ON', Fan.ON),
-                      ('fan_OFF', Fan.OFF),
+                      RO('fan_ON', Fan.ON),
+                      RO('fan_OFF', Fan.OFF),
                       ('fan_state', Fan.OFF),
                       ('led_state', (LED.RED, LED.ON)),
-                      ('led_off_param', {'brightness': led.OFF}),  # keywords, dict not list
+                      RO('led_off_param', {'brightness': led.OFF}),  # keywords, dict not list
                       ]) # only list of k/v tuple pairs
-
-    vd.read_only.extend(['fan_ON', 'fan_OFF', 'led_off_param'])  # constants
 
     trform = { 'get_temp': calibrate_temp }
     
@@ -587,16 +588,17 @@ and 'led_state' so values are in sync with fan.ON.")
               # no setter
             }
 
-    vd2 = VolatileDict([('a', 0), ('some_obj', some_obj),
-                        ('seven', 0), ('some_dict', some_dict),
-                        ('first', 0), ('some_list', some_list),
-                        ('phone', ''), ('some_tuple', some_tuple),
-                        ('address', ''), ('some_ntuple', some_ntuple),
+    vd2 = VolatileDict([('a', 0),
+                        RO('some_obj', some_obj),
+                        ('seven', 0),
+                        RO('some_dict', some_dict),
+                        ('first', 0),
+                        RO('some_list', some_list),
+                        ('phone', ''),
+                        RO('some_tuple', some_tuple),
+                        ('address', ''),
+                        RO('some_ntuple', some_ntuple),
                         ('newval', 9999)])
-
-    # constant references
-    vd2.read_only.extend(['some_obj', 'some_dict', 'some_list',
-                           'some_tuple', 'some_ntuple'])
 
     nl()
     print('iom2')

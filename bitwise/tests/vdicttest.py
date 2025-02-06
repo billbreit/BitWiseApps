@@ -8,9 +8,9 @@ except:
 del(fsinit)
 
 try:
-	from vdict import VolatileDict, VolatileDictException, DELETED, checkstats
+	from vdict import VolatileDict, VolatileDictException, DELETED, RO, checkstats
 except:
-	from lib.vdict import VolatileDict, VolatileDictException, DELETED, checkstats
+	from lib.vdict import VolatileDict, VolatileDictException, DELETED, RO, checkstats
 	
 
 
@@ -120,7 +120,7 @@ if __name__=='__main__':
     vd['c'] = DELETED
     
     nl()
-    print('### Read Only ###')
+    print('### Read Only Test ###')
     nl()
     print('vd.read_only ', vd.read_only)
     print("vd.read_only.extend(['e','f', 'x'])")
@@ -146,7 +146,7 @@ if __name__=='__main__':
         del(vd['x'])
     except VolatileDictException as e:
         print(e)
-
+        
     nl()
     print("do first write to ro key 'x'")
     print("vd['x'] = 654")
@@ -159,6 +159,15 @@ if __name__=='__main__':
         print(e)
     nl()
     
+    print('Test vdict create with RO/red_only flag')  
+    dro = [('a', 1), RO('b', 2), ('c', 3), RO('d', 4 ), ('e', 5), RO( 'f', 6 )]
+    print('kv list ', dro)
+    vdro = VolatileDict(dro)
+    print('vdict keys ', vdro.keys() )
+    print('vdict read only ', vdro.read_only )
+    nl()
+    print('### End Read Only test ###')
+    nl()
     
     print('vd using __str__')
     print(str(vd))
@@ -286,10 +295,7 @@ if __name__=='__main__':
     print("vx.get('xxx',vx['_message1']) ", vx.get('xxx',vx['_message1']))
     nl()
 
-
-    
     print('dict vx ', vx)
-    
     print()
         
     print('isinstance(msg1, rmsgdef) ', isinstance(msg1, rmsgdef))
