@@ -20,7 +20,7 @@ Another major issue is debugging the defintion of the IOMap.  The IOMapper appro
 
 **fan_example.py**: A non-trivial example of IOMapper using a product design simulation for a cheap and outrageously unreliable fan, made with the cheapest parts availible ( with a one week money-back guarantee, which is slightly shorter than the expected life-time of the fan ).  Be prepared for the dreaded DEADFAN exception !  Hey, I had to do the grind for multiple decades, so have some fun in my declining years.
 
-The fan example may also provide a basis for a simulation of a fairly complicated solar-powered water pump, to serve wildlife in deep drought situations.  See [Water for Wildlife project](https://github.com/billbreit/BitWiseApps/wiki/BinaryLogicApplications#basics-requirements-of-water-for-wildlife-project).
+The fan example may also provide a basis for a simulation of a fairly complicated solar-powered water pump, to serve wildlife in deep drought situations.  See [Water for Wildlife project](https://github.com/billbreit/BitWiseApps/wiki/WaterForWildlife).
 
 #### bitwise/lib directory >
 
