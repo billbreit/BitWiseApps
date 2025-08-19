@@ -40,6 +40,10 @@ A base of common core Python/MicroPython libraries, slowly enlarging.  Note: the
 
 **vdict.py** - VolatileDict for tracking changes to values in a dictionary.  Also provides read-only ( write-once ) locks on value updates.  In a MicroPython environment, provides a faster alternative to mpy OrderedDict ( default dict is not ordered ).
 
+#### bitwise/lib/core directory >
+
+Core libraries. such as *functools*. that are not implemented in the MicroPthon standard library.  Some are renamed. such as *itertools* to *gentools*, to aviod confusion.  Other are specialized such as the *bitops* module,   
+
 #### bitwise/tests directory >
 
 Basic tests/demos of major components:
