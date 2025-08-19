@@ -49,7 +49,7 @@ from lib.core.gentools import chain
 from lib.core.bitops import power2, bit_indexes
 
 from iomapper import IOMapper, Map, MDEBUG
-MDEBUG = True # uncomment for alot of details about binding values
+# MDEBUG = True # uncomment for alot of details about binding values
 
 from idevices import Fan, LED, RandomThermometer, Thermostat, Switch
 
