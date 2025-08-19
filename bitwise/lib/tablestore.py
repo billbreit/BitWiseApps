@@ -53,12 +53,16 @@ import os
 import json
 from collections import namedtuple, OrderedDict
 
-from liststore import TupleStore, datetime, timestamp
+try:
+    from liststore import TupleStore, datetime, timestamp  # try abs
+    print('abs path found')
+except ImportError:
+    from lib.liststore import TupleStore, datetime, timestamp
 
 try:
-    from fsutils import path_exists, path_separator
-except:
-    from lib.fsutils import path_exists, path_separator
+    from core.fsutils import path_exists, path_separator
+except ImportError:
+    from lib.core.fsutils import path_exists, path_separator
 
 
 """TableDef - Table Definition,
@@ -584,7 +588,7 @@ DataStoreDef = namedtuple('DataStoreDef', DBDef_fields )
      unique:list[str],
      col_defs:list[ColDef]
 """
-DBTDef_fields = ['tname', 'ttype', 'filename',  'unique', 'col_defs']  # no _fields in mpy
+DBTDef_fields = ['tname', 'ttype', 'filename',  'unique', 'col_defs']  
 DBTableDef = namedtuple('DBTableDef', DBTDef_fields)
 
 """ RelDef, Relation Definition - parent/pcol <-> child/ccol

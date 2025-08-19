@@ -17,7 +17,7 @@ del(fsinit)
 
 # from lib.bitops import power2, bit_indexes, bitslice_insert, bit_remove
 
-from lib.bitops import bit_indexes
+from lib.core.bitops import bit_indexes
 
 from lib.liststore import ListStore, TupleStore, display_store, timestamp
 

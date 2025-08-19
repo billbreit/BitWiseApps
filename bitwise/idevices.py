@@ -16,13 +16,12 @@ class Fan(object):
     
         if verbose:
             if new_state == self.OFF:
-                print('-> Turning fan OFF')
+                print('Fan -> Turning fan OFF')
             elif new_state == self.ON:
-                print('-> Turning fan ON')
+                print('Fan -> Turning fan ON')
             else:
-                print('-> Unknown fan state: ', new_state)
-            print()
-
+                print('Fan -> Unknown fan state: ', new_state)
+ 
         self.state = new_state
 
     def get_state(self):

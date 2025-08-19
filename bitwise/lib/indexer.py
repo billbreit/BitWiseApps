@@ -1,8 +1,20 @@
+"""
+module:     indexer
+version:    v0.4.4
+sourcecode: https://github.com/billbreit/BitWiseApps
+copyleft:   2024 by Bill Breitmayer
+licence:    GNU GPL v3 or above
+author:     Bill Breitmayer
+
+Indexer for ListStore and inheritors.   Must be imported and set in
+ListStore instance as self.indexer = Indexer(args).  Less memory
+consumption.
+"""
 
 try:
-    from lib.bitops import power2, bit_indexes, bitslice_insert, bit_remove
-except:
-    from bitops import power2, bit_indexes, bitslice_insert, bit_remove
+    from core.bitops import power2, bit_indexes, bit_remove
+except ImportError:
+    from lib.core.bitops import power2, bit_indexes, bit_remove
 
 class IndexerError(Exception):
     pass
@@ -32,7 +44,7 @@ class Indexer(object):
         self._slots: list[str] = col_names
         self._store = store or []  # empty liststore means class methods only
         self._index: dict = {}
-        
+
         # list of columns actually indexed, using index_attr()
         self._indexed: list[str] = []
 
@@ -40,6 +52,9 @@ class Indexer(object):
             self._indexable.extend(usertypes)
 
         self._indexable = tuple(self._indexable)   # set ?
+        
+    def __del___(self):
+        self._store = None
 
     @classmethod
     def index_list(cls, alist: list) -> dict:
@@ -47,7 +62,7 @@ class Indexer(object):
 
         """Build set of distinct, indexable values in alist"""
         col_value_set = { value for value in alist if type(value) in cls._indexable }
-        
+
 
         """ init subdict """
         sub_dict = { value:0 for value in col_value_set }
@@ -65,13 +80,13 @@ class Indexer(object):
     def index(self):
         """return ref to internal index."""
         return self._index
-        
+
     def clear(self):
-    
+
         self._index = {}
         self._indexed = []
-        
-        
+
+
 
     def index_attr(self, attr_name: str):
         """Create new index for attr.column name"""
@@ -80,7 +95,7 @@ class Indexer(object):
             raise IndexerError("Index Attr: Column ", attr_name, " not known.")
 
         storage_slot = self._slots.index(attr_name)
-        
+
         sub_dict = self.index_list(self._store[storage_slot])
 
         self._index[attr_name] = sub_dict
@@ -100,17 +115,17 @@ class Indexer(object):
         if attr_name not in self._indexed:
             return
 
-        # NOTAND old value 
+        # NOTAND old value
         self.index[attr_name][old_value] &= ~power2(row_slot)
 
         if self.index[attr_name][old_value] == 0:
             del self.index[attr_name][old_value]
-        
+
         # If value is new, init mask
         if type(new_value) in self._indexable:
             if new_value not in self.index[attr_name].keys():
                 self.index[attr_name][new_value] = 0
-                
+
         # OR new value
         self.index[attr_name][new_value] |= power2(row_slot)
 

@@ -1,6 +1,6 @@
 """
 module:     iomapper
-version:    v0.0.1
+version:    v0.0.2
 sourcecode: https://github.com/billbreit/BitWiseApps
 copyleft:   2024 by Bill Breitmayer
 licence:    GNU GPL v3 or above
@@ -18,11 +18,11 @@ Use cases:
   See example for 'getters/setters'.
 """
 
-from functools import partial
 from collections import namedtuple
+
+from lib.core.functools import partial  
+from lib.core.getset import i_get, i_set,  a_get, a_set
 from lib.vdict import VolatileDict, RO, checkstats
-# itemgetter, itemsetter, attrgetter, attrsetter
-from lib.getset import i_get, i_set,  a_get, a_set
 
 MDEBUG = False  # need for both code debugging and iomap debugging
 
@@ -109,10 +109,10 @@ def MM( wrap:'funcref'=None,
        Probably more 'namedtuple plus' checks and validations here.
 
        { 'actionkey': Map( wrap = None,
-                          target = myobj.settval,
-                          params = ['thenewval'],
-                          vretrun = None,
-                          chain = None ) }  # will init to []
+                           target = myobj.settval,
+                           params = ['thenewval'],
+                           vretrun = None,
+                           chain = None ) } 
 
        { 'actionkey': MM( target = myobj.settval,
                           params = ['thenewval'] }
@@ -165,6 +165,10 @@ class IOMapper(object):
          and then iom.read/bind using values dict values for parameters.
 
        - iomap:dict - bind request keywords and Map defintions.
+       
+       - read_keys:list[str] - action keys for read cycle.  Most will have a 
+         vreturn to the values dict and then a chain of action keys that
+         synchronize the dependent values.  
 
        - local_values - local 'external' object refs to add to value dict.
          Many be used externally to augment or bypass iomapper functions,
@@ -203,7 +207,8 @@ class IOMapper(object):
             # use subclass def,
             self.values = self._values
 
-        if not hasattr(self, 'values') or not self.values:  # None or empty
+        # if not hasattr(self, 'values') or not self.values:  # None or empty
+        if not self.values:  # None or empty
             raise IOMapperError('Need to provide non-empty dict of values')
 
         if self._iomap:   # subclass, override params
@@ -271,8 +276,8 @@ class IOMapper(object):
         if key in self.transforms and v is not None:
             v = self.transforms[key](v)
 
-        if vreturn and v!=self.values[vreturn]:
-            self.values[vreturn] = v  # whatever, not None or same value
+        if vreturn and v!=self.values[vreturn]: # rethink, ignore v if None ?
+            self.values[vreturn] = v  # whatever, not same value
 
         if isinstance(chain, str):
             chain = [chain]
@@ -543,7 +548,7 @@ and 'led_state' so values are in sync with fan.ON.")
 
     # del(iom)
 
-    print('### Test getters/setters ###')
+    print('### Test IOMapper getter/setter wrappers ###')
     nl()
 
     class SomeObject:

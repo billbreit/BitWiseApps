@@ -142,21 +142,21 @@ except Exception as e:    # micropython
 """Bit and bitslice operations, list-like capabilities for integer."""
 
 def bit_get( bint:int, index:int ) -> int:
-    """Get bit n in integer x """
+    """Get bit n in bint x """
     
     if bint < 0: return None  # error
        
     return ( bint >> index ) & 1
     
 def bit_set(bint:int, index:int ) -> int:
-    """Set bit n in integer x """
+    """Set bit n in bint """
 
     if bint < 0: return None  # error
         
     return bint | ( 1 << index)
     
 def bit_clear(bint:int, index:int ) -> int:
-    """Clear bit n in integer x """
+    """Clear bit n in bint """
 
     if bint < 0: return None  # error 
   

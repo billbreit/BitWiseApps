@@ -13,7 +13,7 @@ del(fsinit)
 try:
     import gentools as g
 except:
-    import lib.gentools as g
+    import lib.core.gentools as g
 
 nl = print
 

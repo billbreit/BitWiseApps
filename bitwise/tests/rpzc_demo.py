@@ -44,7 +44,8 @@ from liststore import datetime, timestamp
 
 class Members(TableStore):
 
-    _tdef = TableDef(tname = 'Member',
+    _tdef = TableDef(
+                     tname = 'Member',
                      filename = 'member',
                      unique=['name'],
                      col_defs = [ColDef(cname='name', default=None, ptype=str),
@@ -64,7 +65,8 @@ class Members(TableStore):
         """Need way to formalize"""
 
 
-        row = min(iter(self), key = lambda x:x[self.slot_for_col('date_joined')])
+        row = min(iter(self),
+                      key = lambda x:x[self.slot_for_col('date_joined')])
 
         return row[self.slot_for_col('name')]
 

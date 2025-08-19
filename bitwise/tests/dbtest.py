@@ -1,4 +1,6 @@
-"""For Pico and ESP32 """
+"""For Pico and ESP32,
+   get a basic sense of memory consumption.
+   RPZC DB is about about 5K."""
 
 try:
     from gc import mem_free, collect
@@ -19,11 +21,17 @@ try:
     import fsinit
 except:
     import tests.fsinit as fsinit
-del(fsinit)
+    
+print('is mpy ', fsinit.is_micropython())
+
+if fsinit.is_micropython():
+    os.chdir('/tests')  # for json load
 
 print('After fsinit')
 print('getcwd ', os.getcwd())
 print('path   ',sys.path)
+
+del(fsinit)
 
 # os.chdir('tests')
 # print('getcwd ', os.getcwd())

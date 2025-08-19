@@ -44,9 +44,9 @@ from collections import namedtuple
 # from lib.vdict import VolatileDict as vdict
 
 try:
-    from bitops import power2, bit_indexes, bitslice_insert, bit_remove
+    from lib.core.bitops import power2, bit_indexes, bitslice_insert, bit_remove
 except:
-    from lib.bitops import power2, bit_indexes, bitslice_insert, bit_remove
+    from core.bitops import power2, bit_indexes, bitslice_insert, bit_remove
 
 from time import localtime
 
@@ -108,7 +108,7 @@ class ListStore(object):
        
         # needs to be set via set_indexer() using Indexer class,
         # no overhead if not used
-        self.indexer = None 
+        self.indexer = None
 
 
     def __iter__(self) -> list[list]:

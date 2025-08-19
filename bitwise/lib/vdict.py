@@ -41,10 +41,18 @@ Volatile Dictionary - tracks keys of changed items for notification/synching bet
 
 from collections import namedtuple
 
+"""
 try:
-    from bitops import bit_indexes, power2, bit_length, bit_remove
+    from core.bitops import bit_indexes, power2, bit_length, bit_remove
 except:
-    from lib.bitops import bit_indexes, power2, bit_length, bit_remove
+    from lib.core.bitops import bit_indexes, power2, bit_length, bit_remove
+"""
+ 
+# WW python
+try:
+    from core.bitops import bit_indexes, power2, bit_length, bit_remove
+except ImportError:
+    from lib.core.bitops import bit_indexes, power2, bit_length, bit_remove
 
 DELETED = namedtuple('DELETED',[])      # as class
 # DELETED = namedtuple('DELETED',[])()  # as instance, not class

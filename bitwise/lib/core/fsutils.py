@@ -3,6 +3,9 @@
 import os, sys
 
 
+def is_micropython():
+    return sys.implementation.name == 'micropython'
+
 def isdir(path:str) -> bool:
     try:
         return bool(os.stat(path)[0] & 0o040000)
@@ -29,6 +32,12 @@ def path_separator() -> str:
         return '\\'  # windows
     else:
         return '/'  # linux py or mpy
+        
+def rel_parent_dir(path):
+    pathsep = path_separator()
+    ppath = pathsep.join(path.split(pathsep)[:-1])
+    
+    return ppath
     
 def fix_paths(libs:list=None):
     """Funky but necessary for mpy filesystem and relative-like imports.
