@@ -26,9 +26,9 @@ The fan example may also provide a basis for a simulation of a fairly complicate
 
 A base of common core Python/MicroPython libraries, slowly enlarging.  Note: the '/lib' directory is in the default sys.path for micropython, the 'micropythonic standard'.
 
-**liststore.py** - a multilist structure of columns and rows.  Intended to be quick and flexible: any row of any column can be of any valid Python type.  Also allows indexing of immutable values ( values that can be dict keys ) and bitwise operations for fast queries.  For a demo, go the the /tests directory and run as 'python liststore_test.py' ( same for other modules ).
+**tuplestore.py** - TupleStore is a multilist structure of columns and rows based on ListStore, a list of list structure with column names, defaults and a suite of list-like row operations.  TupleStore has a namedtuple_factory that can emit rows of typed namedtuples.  Intended to be quick and flexible: any row of any column can be of any valid Python type.  Also allows indexing of immutable values ( values that can be dict keys ) and bitwise operations for fast queries.  For a demo, go the the /tests directory and run as 'python tuplestore_test.py' ( same for other modules ).
     
-**tablestore.py** - a relational-like structure based on liststore with restrictions that implement:
+**tablestore.py** - a relational-like structure based on TupleStore with restrictions that implement:
 
 *Python Types*: enforce column type for any Python type that can be stored/recovered from JSON. 
 
@@ -38,7 +38,7 @@ A base of common core Python/MicroPython libraries, slowly enlarging.  Note: the
 
 *Referential Integrity*: When multiple tables are defined within the DataStore class, the relationships between ( single column ) keys in tables are maintained: every child key must have a parent key and no parent with children can be deleted.
 
-**vdict.py** - VolatileDict for tracking changes to values in a dictionary.  Also provides read-only ( write-once ) locks on value updates.  In a MicroPython environment, provides a faster alternative to mpy OrderedDict ( default dict is not ordered ).
+**vdict.py** - VolatileDict for tracking changes to values in a dictionary.  Also provides read-only ( write-once ) locks on key values and full locks (_thread.LockType) on thread updates.  In a MicroPython environment, provides a slightly faster alternative to mpy OrderedDict ( default dict is not ordered ).
 
 #### bitwise/lib/core directory >
 
@@ -48,7 +48,7 @@ Core libraries. such as *functools*. that are not implemented in the MicroPthon 
 
 Basic tests/demos of major components:
 
-**liststore, tablestore and vdict tests**:  taking liststore, tablestore and vdict out for a spin.  Much more fun than writing unit tests, although it may wind up with unit tests eventually.
+**tuplestore, tablestore and vdict tests**:  taking tuplestore, tablestore and vdict out for a spin.  Much more fun than writing unit tests, although it may wind up with unit tests eventually.
 
 **rpzc_demo.py**: An extended demo of DataStore.  A non-trivial demo database of 7 tables and maybe 40 rows.
 
@@ -66,6 +66,6 @@ The file system init ( fsinit ) experiment has been a huge hastle.  MircoPython 
 
 Most programs run in a small memory footprint, a base of about 40K, usable on anything from Raspberry Pi Pico and ESP32 microcontrollers to ... who knows what ( Windows and Linux, not sure about Mac ). 
 
-The current version is somewhere around 0.4.6. no matter what the code may say.  Last major update was early January.
+The current version is somewhere around 0.4.8. no matter what the code may say.  Last major update was early January 2025.
 
 See [Home Wiki Page](https://github.com/billbreit/BitWiseApps/wiki)
