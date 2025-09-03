@@ -39,7 +39,7 @@ from tablestore import DataStore, DataStoreDef, RelationDef, ColDef, display_dbd
 
 """User Types"""
 
-from liststore import datetime, timestamp
+from tuplestore import datetime, timestamp
 
 
 class Members(TableStore):

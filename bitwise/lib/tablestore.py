@@ -54,10 +54,10 @@ import json
 from collections import namedtuple, OrderedDict
 
 try:
-    from liststore import TupleStore, datetime, timestamp  # try abs
-    print('abs path found')
+    from tuplestore import TupleStore, datetime, timestamp  # try abs
+    # print('abs path found')
 except ImportError:
-    from lib.liststore import TupleStore, datetime, timestamp
+    from lib.tuplestore import TupleStore, datetime, timestamp
 
 try:
     from core.fsutils import path_exists, path_separator

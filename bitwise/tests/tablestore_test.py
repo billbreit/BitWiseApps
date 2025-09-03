@@ -22,12 +22,12 @@ print('sys.path ', sys.path)
 ### Something happened here.  fsinit was working and then it wasn't
 
 try:
-    from lib.liststore  import TupleStore    
+    from lib.tuplestore  import TupleStore    
     from lib.tablestore import TableStore, TableDef, TDef_fields, DataStore, DataStoreDef
     from lib.tablestore import ColDef, RelationDef, DBTableDef, timestamp, datetime, display_table
     from lib.tablestore import DBDef_fields
 except:
-    from liststore  import TupleStore    
+    from tuplestore  import TupleStore    
     from tablestore import TableStore, TableDef, TDef_fields, DataStore, DataStoreDef
     from tablestore import ColDef, RelationDef, DBTableDef, timestamp, datetime, display_table
     from tablestore import DBDef_fields

@@ -44,12 +44,12 @@ nl()
 print("stat '/'               ", stat_result(*os.stat('/')))
 print("bin (stat '/').st_mode ", bin(stat_result(*os.stat('/')).st_mode))
 print("stat '/dev'            ", stat_result(*os.stat('/dev')))
-print("stat 'liststore.py'    ", stat_result(*os.stat('liststore.py')))
+print("stat 'liststore.py'    ", stat_result(*os.stat('tuplestore.py')))
 nl()
 print("statvfs '/'            ", stat_result(*os.statvfs('/')))
 print("bin (statvfs '/').st_mode ", bin(stat_result(*os.statvfs('/')).st_mode))
 print("statvfs '/dev'         ", stat_result(*os.statvfs('/dev')))
-print("statvfs 'liststore.py' ", stat_result(*os.stat('liststore.py')))
+print("statvfs 'liststore.py' ", stat_result(*os.stat('tupletore.py')))
 
 
 """

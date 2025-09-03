@@ -16,15 +16,24 @@ Use cases:
   See example below for 'Imaginary Devices'.
 - IOMapper gets all object references from the values dict.
   See example for 'getters/setters'.
+  
+An 'agenda' feature maintains consistency across cycles by generating
+write commands for a new 'read_into_values' cycle.  In other words
+values changed are in fact changed, as required by IOEngine run_cycle,
+
+IOMapper object state is determined by the keys and values in values dict,
+*plus* the commands in the agenda from the previous binding cycle.
+   
 """
 
 from collections import namedtuple
 
-from lib.core.functools import partial  
+from lib.core.functools import partial
 from lib.core.getset import i_get, i_set,  a_get, a_set
 from lib.vdict import VolatileDict, RO, checkstats
 
 MDEBUG = False  # need for both code debugging and iomap debugging
+EDEBUG = False  # name clash with EDEBUG in IOEngine
 
 """Poor man's typing"""
 def x():
@@ -111,8 +120,8 @@ def MM( wrap:'funcref'=None,
        { 'actionkey': Map( wrap = None,
                            target = myobj.settval,
                            params = ['thenewval'],
-                           vretrun = None,
-                           chain = None ) } 
+                           vreturn = None,
+                           chain = None ) }
 
        { 'actionkey': MM( target = myobj.settval,
                           params = ['thenewval'] }
@@ -153,6 +162,12 @@ iomapper_fields = ['values', 'iomap', 'read_keys', 'local_values', 'transforms']
 
 IOMapperDef = namedtuple('IOMapperDef', iomapper_fields )
 
+# Commands for the agenda mechanism, pass actions forward to next binding cycle,
+# maintain valid values_changed flags.
+
+SetVal = namedtuple('SetVal', ['key', 'value'])  # value needs indirection
+Run = namedtuple('Run', ['action'])    # params override ?
+
 
 class IOMapperError(Exception):
     pass
@@ -165,17 +180,20 @@ class IOMapper(object):
          and then iom.read/bind using values dict values for parameters.
 
        - iomap:dict - bind request keywords and Map defintions.
-       
-       - read_keys:list[str] - action keys for read cycle.  Most will have a 
+
+       - read_keys:list[str] - action keys for read cycle.  Most will have a
          vreturn to the values dict and then a chain of action keys that
-         synchronize the dependent values.  
+         synchronize the dependent values.
 
-       - local_values - local 'external' object refs to add to value dict.
-         Many be used externally to augment or bypass iomapper functions,
-         if necessary.  Can be passed as params, but better defined in
-         subclass.
+       - local_values: dict[str, obj_ref - local 'external' object refs
+         to add to value dict.  Many be used externally to augment 
+         or bypass iomapper functions, if necessary. Can be passed as params,
+         but better defined in subclass.
 
-       - transforms:dict - massage return values ( ex. voltage -> degrees )
+       - transforms: dict - massage return values ( ex. voltage -> degrees )
+       
+       The internal structure agenda is a list of SetVal/Run commands to be
+       run before a new binding cycle and is part of IOMapper state.
 
        When subclassed, becomes static info structure, more like a
        specialization than a subclass.
@@ -237,21 +255,31 @@ class IOMapper(object):
         # Now the Values Dict
 
         if MDEBUG:
-            print('IOMapper: initial value: ', self.values)
+            print('IOMapper: initial values: ')
+            print(self.values)
             print()
         self.local_vals = self._local_values if self._local_values else local_vals
 
         # if local_vals, update values dict
         if self.local_vals:
             if MDEBUG:
-                print('IOMapper: _local values: ', self.local_vals)
+                print('IOMapper: _local values: ')
+                print( self.local_vals)
                 print()
 
-            if set(self.local_vals).intersection(set(self.values)):
-                raise IOMapperError('Duplicate keys in values and local_values dicts.')
-            else:
-                self.values.update(self.local_vals)
-                self.values.read_only.extend(self.local_vals.keys())
+            # Fix, need to revisit, no slam for existing values dict
+            # if set(self.local_vals).intersection(set(self.values)):
+            #    raise IOMapperError('Duplicate keys in values and local_values dicts.')
+            # else:
+            # self.values.update(self.local_vals)
+            #self.values.read_only.extend(self.local_vals.keys())
+            
+            for k, v in self.local_vals.items():
+                if k not in self.values:
+                    self.values[k] =v
+                    self.values.read_only.append(k)
+                    
+        self.agenda = []
 
         if MDEBUG:
             print('Starting read_into_values')
@@ -288,7 +316,7 @@ class IOMapper(object):
             for ch in chain:
                 r = self.read(ch)  # no returns, mostly for values dict sync
                 if MDEBUG:
-                    print(f"Chaining for iom key {ch} -> {r}")
+                    print(f"Chaining for {ch} - returning -> {r}")
 
         return v  # why not, likely None
 
@@ -298,6 +326,35 @@ class IOMapper(object):
            to indicate an intended state change. """
 
         return self.read(key)
+        
+    def add_agenda(self, agenda):
+        """Add command ( SetVal or Run ) for next cycle."""
+
+        if isinstance(agenda, list):
+            self.agenda.extend(agenda)
+        else:
+            self.agenda.append(agenda)
+        
+    def run_agenda(self):
+        """Execute commands from previous cycle at start of new cycle,
+           generating values_change."""
+           
+        if MDEBUG or EDEBUG: print('-> Running agenda')
+
+        for command in self.agenda:
+            if isinstance(command, SetVal):
+                if MDEBUG or EDEBUG: print('     SetVal ', command.key, command.value)
+                self.values[command.key] = command.value
+            elif isinstance(command, Run):
+                if MDEBUG or EDEBUG: print('     Run ', command.action)
+                self.write(command.action)
+            else:
+                raise IOMapperError(f'Unsuppurted agenda item {command}.')
+
+        if MDEBUG or EDEBUG: print()
+        
+        self.agenda = []
+
 
     def read_into_values(self, read_keys:list=None ):
         """Bind all read keys in IO Map to values dict.
@@ -309,6 +366,11 @@ class IOMapper(object):
            vreturn not None, params None    , wrap is getter, chain is None
            vreturn not None, wrap not None  , target is None, is getter
            vreturn not None, target not None, params is None, then is read ? """
+           
+        self.values.reset()
+        
+        if self.agenda:
+            self.run_agenda()
 
         if read_keys:
             reads = read_keys  # override
@@ -337,8 +399,8 @@ class IOMapper(object):
         # if not hasattr(wrap, '__name__'):  # closure, not function, for mpy ?
 
         if MDEBUG:
-            print()
-            print(f'MDEBUG:  w: {wrap} / t: {target} / p: {params}' )
+            print('start bind()')
+            print(f'wrap: {wrap} | target: {target} | params: {params}' )
 
         if isinstance(target, str):
             target = self.values[target]
@@ -360,8 +422,6 @@ class IOMapper(object):
         else:
             evals = []
 
-        if MDEBUG: print('evals ', evals)
-
         if target is None:   # is getter
             if MDEBUG:
                 print('target is None')
@@ -372,7 +432,6 @@ class IOMapper(object):
 
         else:   # target is function or setter
 
-            if MDEBUG: print(f'target is {target}')
             if wrap is None:  # is function
                 if evals:
                     if MDEBUG:
@@ -393,7 +452,7 @@ class IOMapper(object):
                 if MDEBUG: print(f'setter for {wrap}, with {target} {evals}')
                 result = wrap(target, *evals)
 
-            if MDEBUG: print(f'bind() returning -> {result}')
+            if MDEBUG: print(f'exit bind() - returning -> {result}')
             return result
 
         raise IOMapperError(f"Can't bind {wrap} | {target} | {params} | {evals} -> .")
@@ -503,7 +562,9 @@ if __name__ == '__main__':
     print('values after incorrect update of ', iom.values )
     nl()
 
-    print('Init values dict - read_into_values()')
+    print('=== Init values dict - read_into_values() ===')
+    iom.add_agenda(SetVal('testsetval', True ))
+    iom.add_agenda(Run('fan_on'))
     iom.read_into_values()
 
     nl()
@@ -537,11 +598,12 @@ and 'led_state' so values are in sync with fan.ON.")
     iom.values.reset()
     nl()
 
-    print("iom.write('fan_off'), should be verbose=False ")
-    iom.write('fan_off')
-    print("iom.write('led_off')")
-    iom.write('led_off')
+    print("iom.add_agenda(Run('fan_off'))")
+    iom.add_agenda(Run('fan_off'))
+    print("iom.add_agenda(Run('led_off'))")
+    iom.add_agenda(Run('led_off'))
     nl()
+    iom.read_into_values()
 
     checkstats(iom.values)
     nl()

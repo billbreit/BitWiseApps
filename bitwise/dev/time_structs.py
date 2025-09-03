@@ -27,7 +27,7 @@ except:
 fix_paths()
 
 
-from liststore import ListStore, TupleStore
+from tuplestore import ListStore, TupleStore
 from tablestore import TableStore, TableDef, ColDef
 from indexer import Indexer
 

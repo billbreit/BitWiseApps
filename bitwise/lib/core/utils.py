@@ -5,7 +5,7 @@
 import sys, os
 import time
 import json
-from lib.core.fsutils import path_separator, rel_parent_dir
+# from lib.core.fsutils import path_separator, rel_parent_dir
 
 def ismicropython():
     
@@ -27,7 +27,7 @@ def timer(func, repeat=1):
          
     return wrapped_func
 
- 
+'''
 class JSONFileLoader:
 
     # defaults in subclass
@@ -54,7 +54,7 @@ class JSONFileLoader:
         except OSError:
             print('--> directory already exists')
 
-    def make_filename(self, filename: str) -> str:
+    def make_filename(self, filename: str = None) -> str:
         """Construct filename, extention, path"""
 
         fname = filename or self.default_filename
@@ -79,3 +79,4 @@ class JSONFileLoader:
         fname = self.make_filename(filename)
         with open( fname, "wt") as jfile:
             json.dump(data, jfile)
+'''
