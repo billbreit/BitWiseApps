@@ -11,7 +11,7 @@ del(fsinit)
 
 try:
 	from vdict import VolatileDict, VolatileDictException, DELETED, RO, checkstats
-except:
+except ImportError:
 	from lib.vdict import VolatileDict, VolatileDictException, DELETED, RO, checkstats
 
 

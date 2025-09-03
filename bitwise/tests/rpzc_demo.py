@@ -17,7 +17,7 @@ try:
     mem_free_present = True
     mem_start = mem_free()
     # from micropython import mem_info, qstr_info, stack_use
-except:
+except ImportError:
     mem_free_present = False
 
 """
@@ -30,7 +30,7 @@ if mem_free_present:
 
 try:
     import fsinit
-except:
+except ImportError:
     import tests.fsinit as fsinit
 del(fsinit)
 

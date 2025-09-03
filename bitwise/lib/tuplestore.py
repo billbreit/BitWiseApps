@@ -76,7 +76,7 @@ from collections import namedtuple
 
 try:
     from lib.core.bitops import power2, bit_indexes, bitslice_insert, bit_remove
-except:
+except ImportError:
     from core.bitops import power2, bit_indexes, bitslice_insert, bit_remove
 
 from time import localtime

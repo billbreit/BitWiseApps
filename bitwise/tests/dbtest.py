@@ -7,7 +7,7 @@ try:
     mem_free_present = True
     mem_start = mem_free()
 
-except:
+except ImportError:
     mem_free_present = False
 
 import os,sys

@@ -1,18 +1,18 @@
 
 try:
     from micropython import const
-except:
+except ImportError:
     const = lambda x:x
 
 try:
     import fsinit
-except:
+except ImportError:
     import tests.fsinit as fsinit
 del(fsinit)
 
 try:
     import gentools as g
-except:
+except ImportError:
     import lib.core.gentools as g
 
 nl = print

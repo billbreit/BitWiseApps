@@ -3,7 +3,7 @@ try:
     from gc import mem_free, collect
     mem_free_present = True
     mem_start = mem_free()
-except:
+except ImportError:
     mem_free_present = False
     
 from collections import namedtuple 
@@ -11,7 +11,7 @@ import json
 
 try:
     import fsinit
-except:
+except ImportError:
     import tests.fsinit as fsinit
 del(fsinit)
 
@@ -19,14 +19,14 @@ import sys, os
 print('os.cwd ', os.getcwd())
 print('sys.path ', sys.path)
 
-### Something happened here.  fsinit was working and then it wasn't
+### Something happened here.  fsinit was working and then it wasn't and then ...
 
 try:
     from lib.tuplestore  import TupleStore    
     from lib.tablestore import TableStore, TableDef, TDef_fields, DataStore, DataStoreDef
     from lib.tablestore import ColDef, RelationDef, DBTableDef, timestamp, datetime, display_table
     from lib.tablestore import DBDef_fields
-except:
+except  ImportError:
     from tuplestore  import TupleStore    
     from tablestore import TableStore, TableDef, TDef_fields, DataStore, DataStoreDef
     from tablestore import ColDef, RelationDef, DBTableDef, timestamp, datetime, display_table
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     # also seems to force collect of import alloc  ?
     try:
         from lib.indexer import Indexer
-    except:
+    except ImportError:
         from indexer import Indexer        
 
     
