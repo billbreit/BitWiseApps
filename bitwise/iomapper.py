@@ -339,6 +339,8 @@ class IOMapper(object):
         """Execute commands from previous cycle at start of new cycle,
            generating values_change."""
            
+        EDEBUG = True
+           
         if MDEBUG or EDEBUG: print('-> Running agenda')
 
         for command in self.agenda:
