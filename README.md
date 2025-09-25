@@ -76,6 +76,6 @@ The file system init ( fsinit ) experiment has been a huge hastle.  MircoPython 
 
 Most programs run in a small memory footprint, a base of about 40K, usable on anything from Raspberry Pi Pico and ESP32 microcontrollers to ... who knows what ( Windows and Linux, not sure about Mac ). 
 
-The current version is somewhere around 0.4.8. no matter what the code may say.  Last major update was early January 2025.
+The current version is somewhere around 0.5.0. no matter what the code may say.  Last major update was the IOEngine class in early September 2025.
 
 See [Home Wiki Page](https://github.com/billbreit/BitWiseApps/wiki)
