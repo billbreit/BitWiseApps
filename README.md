@@ -14,7 +14,7 @@ Current work-in-progress modules:
 
 **ioengine.py**: A prototype of an Event-Condition-Action engine to drive the IOMapper class.  The status of this module is 'barely beta', if that.  I have it set up to produce massive amounts of output, in sort of a 'visible engine' mode.  Set your terminal scrollback to at least 1000 lines.
 
-It's a complicated little beast with lots of sharp edges and rough patches, but it runs well on Python ( partially runs on micropython, with a looong load times ).  It demonstates what may be an useful application of binary indexing to build small logic engines.  BIRM Technology ( Binary Indexing Run Mad ) !
+It's a complicated little beast with lots of sharp edges and rough patches, but it runs well on Python ( partially runs on micropython, with looong load times ).  It demonstates what may be an useful application of binary indexing to build small logic engines.  BIRM Technology ( Binary Indexing Run Mad ) !
 
  See the [IOEngine](https://github.com/billbreit/BitWiseApps/wiki/IOEngine) wiki page.
 
