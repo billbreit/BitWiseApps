@@ -12,6 +12,16 @@ The directory structure:
 
 Current work-in-progress modules:
 
+**ioengine.py**: A prototype of an Event-Condition-Action engine to drive the IOMapper class.  The status of this module is 'barely beta', if that.  I have it set up to produce massive amounts of output, in sort of a 'visible engine' mode.  Set your terminal scrollback to at least 1000 lines.
+
+It's a complicated little beast with lots of sharp edges and rough patches, but it runs well on Python ( partially runs on micropython, with a looong load times ).  It demonstates what may be an useful application of binary indexing to build small logic engines.  BIRM Technology ( Binary Indexing Run Mad ) !
+
+ See the [IOEngine](https://github.com/billbreit/BitWiseApps/wiki/IOEngine) wiki page.
+
+**fan_engine.py**: An extended demo of of IOEngine, demonstating the flattening effect of a rule-based approach to orchestrating the interaction of multiple control levels.  This is the engine implmentation of the fan_example.py demo.
+
+The IOengine and Fan Engine Demo are in mid-stage development.  The real struggle from here on is going to be maintaining simplicity, keeping a small memory footprint, say under 60K in a practical usage scenario.    
+
 **iomapper.py**: A module for generalizing external bind requests, saving a lot of gory details about call structure and parameters.  With a little logic thrown into the mix, it should provide a foundation for a fairly simple process engine.
 
 IOMapper needs critical attention in two areas: marshalling/shoehorning parameters and handling exceptions.  Currently, the mapper is doing nothing to handle exceptions.  To keep the controller/process engine moving, it may be better to let the caller do the deciding, or maybe just 'neuter' the exceptions into error messages in the values_dict.  Explicitly raising IOMapper exceptions should probably be limited to the initial validation of iomap.
