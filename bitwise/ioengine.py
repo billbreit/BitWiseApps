@@ -11,8 +11,8 @@ IOEngine is a prototype of a process engine (driver) for an IOMap.
 IOEngine is a state-transition engine (driver) for the actions definied in
 an IOMap.  IOEngine drives an IOMap, like a multi-step process engine.
 
-THe basic flow is from a values dictionary binding to evaluaions of conditions using
-the values to actions using the condtions as triggers to perform the action.
+The basic flow is from a values dictionary binding to evaluaions of conditions using
+the values to actions using the conditions as triggers to perform the action.
 
 Keys ( in values dict )  - used in ->  Conditions  - used in ->  Action Triggers
 
@@ -34,7 +34,7 @@ a DataStore instance ( a 15K import + maybe 40K of data ) and then add another
 A Pico 2 with a staggering 512K of memory !?
 Reporting 420K free, maybe equiv. to 380K usable with lazy gc / heap creep ?
 
-Note current demo save/restore ruleset won't run on micropython !!!
+Note current demo of save/restore ruleset won't run on micropython !!!
 
 """
 
@@ -50,10 +50,11 @@ def is_micropython():
 from iomapper import IOMapper, Map, MM, SetVal, Run
 import iomapper
 
+from jfloader import JSONFileLoader
+
 from lib.core.gentools import chain
 from lib.core.bitops import power2, bit_indexes, more_than_one_bit_set
 from lib.core.bitops import bitslice_set
-from lib.core.fsutils import JSONFileLoader
 
 from lib.evaluator import Evaluator, Condition
 from lib.tablestore import TableStore  # will be subclass RuleStore ?
@@ -61,7 +62,7 @@ from lib.tablestore import TableStore  # will be subclass RuleStore ?
 from lib.vdict import VolatileDict, checkstats
 
 # Important: debugging is set up as a visible engine demo generating a
-# massive amount of output. Set scrollback to 1000 to play it safe.
+# massive amount of output. Set scrollback to 1000, 2000 to play it safe.
 # Reminder, 'clear' on Linux, 'cls' on Windows.
 
 EDEBUG = True      # both code debugging and action/condition debugging
