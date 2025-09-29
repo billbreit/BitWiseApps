@@ -13,7 +13,6 @@ objects methods or APIs of imaginary devices, programs or protocols.  the IOMap
 and conditions defined in the IOEngine simulates the design for a simple ( and
 inexpensive ! ) fan with some non-simple logic requirements.
 
-
 """
 
 import sys
@@ -49,15 +48,8 @@ EDEBUG = True  # for code debugging and action/condition debugging
 
 from fan_mapper import CheapFanIOMapper
 
-
-
-
-### Stub Classes/Functions for convenience,
-### device subclasses, or odd interfaces.
-
-
-
-
+### Usually stub classes or functions for convenience,
+### device subclasses, or odd interfaces.  See fan_mapper.py
 
 if __name__ == '__main__':
 
@@ -116,10 +108,6 @@ if __name__ == '__main__':
     ioeng = ioengine.TransactorEngine(iom, conditions=conditions, readkeys=read_keys,
                                 cmacros=dcmacros, conflict_sets=conflist )
     #'''
-    '''                            
-    ioeng = ioengine.MonitorEngine(iom, conditions=conditions, readkeys=read_keys,
-                                cmacros=dcmacros, conflict_sets=conflist )
-    '''
     
     checkstats(iom.values)
     print()
@@ -231,7 +219,6 @@ if __name__ == '__main__':
 
     print('--> Creating new instance of ioengine from dict \n')
     ioeng2 =  ioengine.TransactorEngine(iom, Evaluator, from_dict=from_dict )
-    # ioeng2 =  ioengine.MonitorEngine(iom, Evaluator, from_dict=from_dict )
 
     print(f'Values dict, with same values as the end of {run_times} cycle,')
     print(f'plus one cycle, cycle {run_times+1} as it were.')
@@ -252,8 +239,6 @@ if __name__ == '__main__':
     print()
     print('=== End of Save/Load from File Test ===')
     print()
-
-
 
     # checkstats(iom.values)
     # print()
