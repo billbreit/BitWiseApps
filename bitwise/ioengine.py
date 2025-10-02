@@ -24,22 +24,13 @@ Keys ( in values dict )  <- use -  Conditions  <- use -  Action Triggers
 The cross-references for forward/backward mapping between Keys-Conditions-Actions
 ( 'xrefs' ) consumes a significant amount of memory,
 
-
-Note current save/restore ruleset function won't run on micropython. JSON errors !!!
-
 """
 
 # Important: The demo is set up in 'visible engine' mode generating a
 # massive amount of output. Set terminal scrollback to 1000 to play it safe,
 # maybe 2000 for the fan_engine demo. 'clear' on Linux, 'cls' on Windows.
 
-from collections import namedtuple
-
-import sys
-
-def is_micropython():
-    """Test for mpy,  JSON or MRO bugs """
-    return sys.implementation.name == 'micropython'
+from collections import namedtuple, OrderedDict as odict
 
 
 from iomapper import IOMapper, Map, MM, SetVal, Run
@@ -47,6 +38,7 @@ import iomapper
 
 from jfloader import JSONFileLoader
 
+from lib.core.utils import is_micropython
 from lib.core.gentools import chain
 from lib.core.bitops import power2, bit_indexes, more_than_one_bit_set
 from lib.core.bitops import bitslice_set
@@ -91,39 +83,27 @@ class RuleSetLoader(JSONFileLoader):
         if evaluators:
             self.evaluator.update(evaluators)
 
-        if EDEBUG: print('in init ' , self.iomapper)
+        if EDEBUG: print('In RuleSetLoader __init__')
 
     def prepare_types(self, rs_dict:dict) -> dict:
         """Prepare non-jasonable types for save."""
-        
+
         def prepare_conditions():
-            """Got to be a better way"""
+            """Fix for mpy JSON error. Not converting namedtuple
+               values in dict to list."""
 
             conditions: dict = rs_dict['conditions']
             new_cond_dict = dict()
 
             for k, v in conditions.items():
-                print('### in prep ')
-                print('k v  ', k, v )
-
                 new_conds = []
                 for conds in v:
-                    print('in outer prep ', conds, conds[0])
-                    if isinstance(conds[0], list ):
-                        new_list = []
-                        for cond in conds:
-                            print('in inner prep ', cond, list(cond))
-                            new_list.append(list(cond))
-                        new_conds.append(new_list)
-                    else:
-                        print('conds ', conds)
-                        print('list(conds) ', list(conds))
-                        new_conds.append(list(conds))
+                    new_list = []
+                    for cond in conds:
+                        new_list.append(list(cond))
+                    new_conds.append(new_list)
 
                 new_cond_dict[k] = new_conds
-                
-            print('returning ', new_cond_dict)
-            print()
 
             return new_cond_dict
 
@@ -134,10 +114,16 @@ class RuleSetLoader(JSONFileLoader):
 
         new_dict['mapper'] = rs_dict['mapper'] .__class__.__name__  # str, not ref
         new_dict['evaluator'] = rs_dict['evaluator'].__class__.__name__
-        
-        if is_micropython():   # flatten list of namedtuples to list of lists
-            new_dict['conditions'] = prepare_conditions()
 
+        if is_micropython():   # JSON error, manually flatten list of namedtuples to list of lists
+            new_dict['conditions'] = prepare_conditions()
+            new_dict['condition_set'] = [list(cond) for cond in rs_dict['condition_set']]
+            
+            for k, conds in rs_dict['cond_macros'].items():
+                conds_list = []  # [ Condition(*cond) for cond in conds ]
+                for cond in conds:
+                    conds_list.append(list(cond))
+                new_dict['cond_macros'][k] = conds_list
 
         return new_dict
 
@@ -150,17 +136,12 @@ class RuleSetLoader(JSONFileLoader):
             new_cond_dict = dict()
 
             for k, v in conditions.items():
-
                 new_conds = []
                 for conds in v:
                     new_list = []
-                    if isinstance(conds[0], list ):
-                        new_list = []
-                        for cond in conds:
-                            new_list.append(Condition(*cond))
-                        new_conds.append(new_list)
-                    else:
-                        new_conds.append(Condition(*conds))
+                    for cond in conds:
+                        new_list.append(Condition(*cond))
+                    new_conds.append(new_list)
 
                 new_cond_dict[k] = new_conds
 
@@ -214,10 +195,9 @@ class IOEngineFactory(object):
 
     iomapper:IOMapper or subclass
     evaluator: Evaluator or subclass
-    conditions: dict[ str, 'List' ]
-                  in form - 'action':list[Condition] or    # single trigger
-                            'action':list[list[Condition]] # multiple OR triggers
-    readkeys: list[str] - override readkeys in IOMapper.
+    conditions: dict[ str, list[list[Condition]]
+       action key, outer list is multiple OR triggers, inner is AND conditions
+    readkeys: list[str] - to override readkeys in IOMapper.
     cmacros: dict[str,list[Condition] - a condition macro replaces itself with
                                         a set of repetitive conditions.
     conflict_sets: list[str|set[str]] - string mean 'conflict key', gets expanded
@@ -243,10 +223,10 @@ IOEngineDef = namedtuple('IOEngineDef', ioenames)
 # Action Def for:
 #  name: str - action key, default Run('action') unless overriden in script.
 #  conditions / trigger conditions: list[Cond]|list[list[Cond]]
-#  script:list[SetVal|Run] -  list of script command, overrides Run('action') .
+#  script:list[SetVal|Run] -  list of script command, overrides Run('action').
+#  Not implemeted yet.
 
 ActionDef = namedtuple( 'ActionDef', ['name', 'conditions', 'script'])
-
 
 # CMacro - name for repeating set of conditions.  Lookup name in cmarcos dict
 # and expand into lists of conditions that get built into action_trigger_xref.
@@ -256,13 +236,10 @@ CMacro = namedtuple('CMacro', ['name'])  # used in list of conditions.
 
 
 class IOEngineBase():
-
-    """
-
-    Keys in the values dict - used in ->  Conditions - used in -> Action Triggers.
+    """ Keys in the values dict - used in ->  Conditions - used in -> Action Triggers.
     The 'event' is a changed value in the values dict.
 
-    Forward mapping and back mapping are both useful.
+    Both forward mapping and back mapping are both useful.
 
     Prototype - may need refactoring, more like a factory, where ECA in an IOEngineDef.
        Can this even be subclassed, more like sequence of function wrappers ?, will
@@ -276,9 +253,8 @@ class IOEngineBase():
 
        evaluator: Evaluator - evaluates condition and returns T/F
  -
-       conditions: dict[str,list['Conditions']]
-          action keys with either List[Condition], simple AND list
-                           or     List[List[Condtion]] OR list with embedded AND lists
+       conditions: dict[str,list[list[Condition]]]
+          action keys with list of ORs with embedded ists of AND conditions
 
        read_keys: list[str] - list of action keys in IOMapper for read_into_values,
           can read a subset of source values into the values dict rather than using
@@ -315,20 +291,29 @@ class IOEngineBase():
         condition_set: list[Condition] - calling this a set, but it is an sorted list of unique
                         conditions in an indexable list form.
 
+        # Action <-> Conditions
+         
         action_trigger_xref: list[tuple] - indexed to cond_set [('action', 0b00101), etc.].
              An action, trigger pair will appear for each OR construction defined
              in the condtions dictionary.
 
-        key_conds_xref: dict - action, integer index to key usage in cond_set.
+        cond_trigger_xref: list[int] - mapping to -> action_triggers,
+          detect potentially changed triggers to test, if match, add action to agenda.
+
+        # Key <-> Conditions 
+        
+        key_conds_xref: dict[str, int] - action, integer index to key usage in cond_set.
             Mainly for detecting conflicts in relations using 'eq', ex. device
             can not be both ON and OFF.  It represents XOR relational 'meta-rules'
             about condition/rule conflicts. There can be strategies for resolution
             of conflicts, ex. simple order of preference in a list, e.g. prefer ON to OFF.
-
-        cond_trigger_xref: list[int] - mapping to -> action_triggers,
-          detect potentially changed triggers to test, if match, add action to agenda.
-
-          In principle, action conflicts should be eliminated with filtering conditions.
+            
+        cond_keys_xref: list[int] - condition set slot --> values dict vkeys.
+            Only two references unless rhs is Python type, then only 1 bit set.
+            Inverse of key_conds_xref.  Can be used to identify conflict sets for
+            'conflict keys', like 'device_state' or 'customer_order.status'.
+            
+            In principle, action conflicts should be eliminated with filtering conditions.
 
         See https://en.wikipedia.org/wiki/Rule-based_system
     """
@@ -421,12 +406,13 @@ class IOEngineBase():
         # dectect, lookup cmacros:dict[str, list[Conditions]]
         # if CMacro for condition, append
 
-        ## conditions:list - list[Condition] or list[list[Condition]]]
-        
-        for k, condition in conditions.items():
-            if not isinstance(condition[0], list):
-                conditions[k] = list(condition)
+        ## conditions:dict[str,list[list[Condition]]]
 
+        for k, conds in conditions.items():
+            if not isinstance(conds[0], list):  # list -> list[list]
+                conditions[k] = [conds]
+
+        # dict[str,list[list[Condition]]]
         self.conditions: dict = self._expand_cmacros(conditions or {})
 
         # Start building internal structures
@@ -538,23 +524,15 @@ class IOEngineBase():
 
             new_conds = []
             for cond in v:
-
-                if isinstance(cond, list ):
-                    new_list = []
-                    for c in cond:
-                        if isinstance( c, CMacro ):
-                            exp_conds = self.cond_macros[c.name]
-                            new_list = [ex_cond for ex_cond in exp_conds]
-                        else:
-                            new_list.append(c)
-                    new_conds.append(new_list)
-                else:
-                    if isinstance( cond, CMacro ):
-                           exp_conds = self.cond_macros[cond.name]
-                           for ex_cond in exp_conds:
-                               new_conds.append(ex_cond)
+                new_list = []
+                for c in cond:
+                    if isinstance( c, CMacro ):
+                        exp_conds = self.cond_macros[c.name]
+                        new_list = [ex_cond for ex_cond in exp_conds]
                     else:
-                        new_conds.append(cond)
+                        new_list.append(c)
+                new_conds.append(new_list)
+
 
             cond_dict[k] = new_conds
 
@@ -602,11 +580,8 @@ class IOEngineBase():
 
         wcond_list:list = []  # working cond_list
         for cond in conds:
-            if isinstance( cond, list):  # multiple OR triggers for action
-                for con in cond:
-                    wcond_list.append(con)
-            else:
-                wcond_list.append(cond)
+            for con in cond:
+                wcond_list.append(con)
 
         # Get rid of duplicated and sort
 
@@ -630,17 +605,10 @@ class IOEngineBase():
         at_xref = []
 
         for action, conds in self.conditions.items():
-            if isinstance( conds[0], list): # multiple triggers, [[conds1] OR [conds2]]
-                for cond in conds:
-                    cond_trigger:int = 0
-                    for con in cond:
-                        i = self.condition_set.index(con)
-                        cond_trigger |=  power2(i)
-                    at_xref.append((action, cond_trigger))
-            else:
+            for cond in conds:
                 cond_trigger:int = 0
-                for cond in conds:
-                    i = self.condition_set.index(cond)
+                for con in cond:
+                    i = self.condition_set.index(con)
                     cond_trigger |=  power2(i)
                 at_xref.append((action, cond_trigger))
 
@@ -771,7 +739,6 @@ class IOEngineBase():
         """Run a binding cycle for iomapper.  This is the main entry
            point into IOEngine.  Must be implemented in subclass.
         """
-        
         raise NotImplemented
 
     def run(self, limit:int=0):
@@ -790,7 +757,6 @@ class IOEngineBase():
                 print()
 
             n += 1
-
 
 class TransactorEngine(IOEngineBase):
     """Transaction Type Event-Condition-Action Engine"""
@@ -900,16 +866,10 @@ class TransactorEngine(IOEngineBase):
         out('')
         for k, v in  self.conditions.items():
             out(f'  {k}:' )
-            if isinstance(v[0], list):
-                # out('v[0] is list', v[0])
-                for conds in v:
-                    # out('DEBUG ', conds)
-                    for cond in conds:
-                        out(f'  {cond}')
-                    out('')
-            else:
-                # out('v[0] is not list', v[0])
-                for cond in v:
+            # out('v[0] is list', v[0])
+            for conds in v:
+                # out('DEBUG ', conds)
+                for cond in conds:
                     out(f'  {cond}')
                 out('')
         out('')
@@ -946,6 +906,8 @@ class TransactorEngine(IOEngineBase):
         out('')
 
         return '\n'.join(einfo)
+
+
 
 
 if __name__ == '__main__':
@@ -985,22 +947,22 @@ if __name__ == '__main__':
     print()
 
     def erun(ioengn, limit):
+        """Basic Controller Function"""
 
         n = 1
-
         while n <= limit:
 
             print('### Running cycle: ', n)
-            print()
-
             ioengn.run_cycle()
 
             if n==4:
+                print()
                 print('-> Injecting switch_on into agenda')
                 ioeng.add_agenda(Run('switch_on'))
                 print()
 
             if n==8:
+                print()
                 print('-> Injecting switch_off into agenda')
                 ioeng.add_agenda(Run('switch_off'))
                 print()
@@ -1029,6 +991,16 @@ if __name__ == '__main__':
         print()
 
     loader = RuleSetLoader( iomappers= { 'BasicFanIOMapper': BasicFanIOMapper })
+
+    '''
+    Seems to be working now.
+    if is_micropython(): # JSON bug
+        print()
+        print('### Running mpy with defective JSON                    ###')
+        print('### Skipping IOEngine save and using pre-built ruleset ###')
+        print()
+    '''
+
     loader.save(ioedict)
     print('--> Saved ioe_dict to json \n')
     print('--> deleting ioeng instance')
@@ -1036,11 +1008,14 @@ if __name__ == '__main__':
     del(ioeng)
 
     print('Testing load json  file from ioenginetest.json')
+
+    '''
     if is_micropython():
         print()
         print('At this point, MicroPython will cause a JSON exception.  Maybe MRO ?')
         print("Sorry bout that - it's been a very persistent bug, still working on it.")
         print()
+    '''
 
     EDEBUG = False
 
@@ -1074,7 +1049,7 @@ if __name__ == '__main__':
 
     EDEBUG = True
 
-    print('Run engine 3 cycles \n')
+    print('Run engine 3 cycles ... see if it still works \n')
 
     erun(ioeng2, 3)
 

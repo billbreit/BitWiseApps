@@ -7,7 +7,7 @@ import time
 import json
 # from lib.core.fsutils import path_separator, rel_parent_dir
 
-def ismicropython():
+def is_micropython():
     
     return sys.implementation.name == 'micropython'
     

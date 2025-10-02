@@ -104,11 +104,10 @@ if __name__ == '__main__':
 
     read_keys = ['get_temp', 'update_temp_hist', 'update_fan_hist', 'fan_overheating', ]
 
-    #'''
+
     ioeng = ioengine.TransactorEngine(iom, conditions=conditions, readkeys=read_keys,
                                 cmacros=dcmacros, conflict_sets=conflist )
-    #'''
-    
+
     checkstats(iom.values)
     print()
 
@@ -181,20 +180,26 @@ if __name__ == '__main__':
             super().__init__( *args, **kws )
 
     ioedict = ioeng.to_dict()
-    print('ioedict.to_dict:  ')
+    print('ioeng.to_dict:  ')
     # print(ioedict)
+    
+    print('--> Deleting ioeng instance \n')
+    del(ioeng)
+
     print()
     print('--> Creating RuleSetLoader \n')
     loader = FanRuleSetLoader()
     filename = 'fan_engine'
-    loader.save(ioedict, filename)
-    print(f"--> Saved ioe_dict to json in '{loader.default_filename}' \n")
     
+    loader.save(ioedict, filename)
+    
+    '''   FIXED ?  
     if is_micropython():
         print()
         print('At this point, MicroPython will cause a JSON exception.  Maybe MRO ?')
         print("Sorry bout that - it's been a very persistent bug, still working on it.")
         print()
+    '''
 
     print('--> Loading from json file and restoring types\n')
     from_dict = loader.load(filename)
@@ -210,9 +215,6 @@ if __name__ == '__main__':
                 print('orig:    ', v)
                 print('restored:', from_dict[k])
 
-
-    print('--> Deleting ioeng instance \n')
-    del(ioeng)
 
     EDEBUG = True
     # EDEBUG = False

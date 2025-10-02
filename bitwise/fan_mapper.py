@@ -1,4 +1,4 @@
-""" IOMapper Def """
+""" Fan IOMapper for Fan Engine examples. """
 
 from random import random
 
@@ -9,7 +9,6 @@ from lib.core.functools import partial
 from lib.core.getset import i_get, i_set, a_get, a_set
 
 from idevices import Fan, LED, RandomThermometer, Thermostat, Switch
-
 
 led = LED()
 thermstat = Thermostat()
@@ -35,9 +34,7 @@ def get_lowerlimit(temp:float):
     return temp - 0.5
 
 
-
 ### Basic Fan Example ###
-
 
 class BasicFanIOMapper( IOMapper ):
 
@@ -98,7 +95,7 @@ class BasicFanIOMapper( IOMapper ):
 
     _read_keys = ['get_temp']
 
-    _local_valuest = { 'fan': fan, 'led': led, 'switch': switch }
+    _local_values = { 'fan': fan, 'led': led, 'switch': switch }
 
     _transforms =  {'get_temp': partial(calibrate_temp, factor=1.6)}
     
@@ -161,7 +158,6 @@ class CheapFan(Fan):
         self.internal_temp = 0.0
         self.saved_state = self.OFF
 
-
     def overheating(self, temp_hist:list):
         """Estimated internal temp from tests/heuristics"""
 
@@ -202,8 +198,6 @@ class CheapFan(Fan):
         self.state_history.pop(0)
 
 cfan = CheapFan()
-
-
 
 class  CheapFanIOMapper(IOMapper):
     """ Class variables are passed to IOMapper __init__

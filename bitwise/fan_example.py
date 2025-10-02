@@ -40,13 +40,11 @@ try:
 except ImportError:
     mem_free_avail = False
 
-
 from lib.vdict import checkstats
 
 from iomapper import SetVal, Run
 
 from fan_mapper import CheapFanIOMapper
-
 
 
 if __name__ == '__main__':
@@ -67,9 +65,7 @@ if __name__ == '__main__':
     print()
 
     def run_cycle():
-
-        """
-        Equivalent conditions
+        """ Equivalent conditions
 
         conditions = { 'fan_suspend':
                      [Condition('fan_overheated', 'eq', True ),
@@ -95,8 +91,6 @@ if __name__ == '__main__':
                      Condition('room_temp', 'lt', 'lower_limit')]
               }
         """
-
-        # iom.values.reset()
 
         iom.read_into_values()  # using iom defined read_keys.
 
@@ -130,13 +124,10 @@ if __name__ == '__main__':
                 if vd['switch_state'] == vd['switch_OFF']:
                     if vd['room_temp'] < vd['lower_limit']:
                         iom.add_agenda(Run('fan_off'))
-
             else:
                 pass # debugging, no action
 
     def erun(iom, limit:int):
-
-
 
         n = 1
 
@@ -149,7 +140,6 @@ if __name__ == '__main__':
 
             print('Running cycle: ', n)
             print()
-
 
             run_cycle()
             
@@ -174,7 +164,6 @@ if __name__ == '__main__':
             print('keys changed:      ', iom.values.keys_changed())
             print('agenda:           ', iom.agenda)             
             print()
-
 
             n += 1
 
