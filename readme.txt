@@ -17,6 +17,13 @@ foundation for developing what I call "binary logic applications".
 
 In the past months:
 
+* ioengine.py: A prototype of an Event-Condition-Action engine to drive the IOMapper class.
+  A set of conditions are assocated with an action in order to trigger the action.
+  The IOEngineBase class implements a set of generic forward and backward mapping structures
+  that can be used to build an operating ECA engine, in this case the Transactor engine. At
+  this point, it's a complicated little devil, but getting a bit easier to use with each
+  development iteration.
+
 * iomapper.py - A module for generalizing external bind requests.  In a world
   of movers and shakers, IOMapper is a doer, a work engine.  It separates
   unconditional logic from the conditional logic driving the IOMapper class. 
