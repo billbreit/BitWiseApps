@@ -6,10 +6,10 @@ copyleft:   2024 by Bill Breitmayer
 licence:    GNU GPL v3 or above
 author:     Bill Breitmayer
 
-ListStore:  - a column-oriented data store using a generalized list of lists structure,
-             with typical list-like operations.  The central store is a list of lists
-             structure, list[list[Any]]. It allows access to columns in the outer list
-             by columns names, So an lstore instance would allow lstore
+ListStore:  - a column-oriented data store using a generalized list of lists
+             structure, with typical list-like operations.  The central store
+             is a list of lists structure, list[list[Any]]. It allows access
+             to columns in the outer list by columns names.
 
 TupleStore - based on ListStore, but identifies columns by columns names and
              accepts and emits  named tuples.  When dumped, it yields a list
@@ -21,19 +21,14 @@ TupleStore - based on ListStore, but identifies columns by columns names and
              micropython namedtuple does not - it also gets a tuple type type,
              another plus,.
 
-Both classes can provide indexing into a store of lists or namedtuples for fast ( and
-utterly pythonic ) queries.  The value of type 'Any' in the list[list[Any]]  structure
-must be hashable in order to create a dictionary key, with a binary/boolean integer
-cross-referenced back into slot position of the value in the column.
+Both classes can provide indexing into a store of lists or namedtuples for fast
+( and utterly pythonic ) queries.  The value of type 'Any' in the
+list[list[Any]]  structure must be hashable in order to create a dictionary
+key, with a binary/boolean integer cross-referenced back into slot position of
+the value in the column.
 
-These can be combined into a query: such as, liststore,index['name']['Bob'] would
-return [ 0, 3 ] for Bob_0 and Bob_3.
-
-Note that Indexer can consume large amounts of memory, probably too much for
-a 256K class platform.
-
-
-For example, a structure of column_defs for a tuple store ['name', 'address', 'phone']:
+For example, a structure of column_defs for a tuple store with columns
+['name', 'address', 'phone']:
 
 people = [[ 'Bob', '733 Main Street', '123-456-7890' ],
           [ 'Mary', '22 Any Avenue', '123-456-2222' ],
@@ -53,22 +48,23 @@ ls.set(0, 'address', '999 Any Avenue' ) would set Bob_0's address.
 
 ls.get_row( 0 ) would return ['Bob', '999 Any Avenue', '123-456-7890']
 
-Indexes can be combined into a python query: such as, ltore,index['name']['Bob'] would
-return [ 0, 3 ] for Bob_0 and Bob_3.
+Indexes can be combined into a python query: such as,
+ltore,index['name']['Bob'] would return [ 0, 3 ] for Bob_0 and Bob_3.
 
 Queries can also be combuned into compound form:
 
-lstore,index['name']['Bob'] | lstore,index['address']['22 Any Avenue']
+lstore.index['name']['Bob'] | lstore.index['address']['22 Any Avenue']
+would return [ 0, 1, 3 ].
 
-would return [ 0, 2, 3 ].
+Note that Indexer can consume large amounts of memory, probably too much for
+a 256K class platform.
 
-All these examples would work the same with TupleStore, plus defaults and type name.
+All these examples would work the same with TupleStore, plus defaults and type.
 
-Known to run on Python 3.9+, micropython v1.20-22 on a Pico and Arduino Nano ESP32.
+Known to run on Python 3.9+, micropython v1.20-22 on a Pico and
+Arduino Nano ESP32.
 
 """
-
-
 
 from collections import namedtuple
 
@@ -82,22 +78,22 @@ except ImportError:
 from time import localtime
 
 # for mpy, precision gmtime/localtime is to sec. apparently
-datetime_fields = [ 'year', 'mon', 'day', 'hour', 'min', 'sec']
-datetime = namedtuple('datetime', datetime_fields )
+datetime_fields = ['year', 'mon', 'day', 'hour', 'min', 'sec']
+datetime = namedtuple('datetime', datetime_fields)
+
 
 def timestamp():
 
-     return localtime()[:6]
+    return localtime()[:6]
 
 
 nl = print
 
 """ mpy
 >>> dir(list)
-['__class__', '__name__', 'append', 'clear', 'copy', 'count', 'extend', 'index',
-'insert', 'pop', 'remove', 'reverse', 'sort', '__bases__', '__dict__']
-
-
+['__class__', '__name__', 'append', 'clear', 'copy', 'count', 'extend',
+ 'index', 'insert', 'pop', 'remove', 'reverse', 'sort',
+ '__bases__', '__dict__']
 """
 
 
@@ -110,8 +106,8 @@ class ListStore(object):
     columns rather than rows.
 
     column_defs List[str]  name strings for now, maybe a list of ColDef tuples.
-    defaults    List[Any], applied from right to left, last default to last column
-    types       List[Any]  applied from left to right, first type to first column
+    defaults    List[Any], applied right to left, last default to last column
+    types       List[Any]  applied left to right, first type to first column
     """
 
     def __init__(
@@ -135,12 +131,11 @@ class ListStore(object):
         self.store: list[list] = [
             [] for i in range(len(self.column_names))]
 
-        self.changed:list[int] = [0] * len(self.column_names)
+        self.changed: list[int] = [0] * len(self.column_names)
 
         # needs to be set via set_indexer() using Indexer class,
         # no overhead if not used
         self.indexer = None
-
 
     def __iter__(self) -> list[list]:
         """Yield columns as list of lists, an iterator over rows."""
@@ -167,13 +162,15 @@ class ListStore(object):
         store[col][row1...col_len]"""
 
         column_indexes = [
-            i for i in range(len(self.column_names)) if power2(row) & self.changed[i]
+            i for i in range(len(self.column_names))
+            if power2(row) & self.changed[i]
         ]
 
         return column_indexes
 
     def reset_changed(self, slot: int = None):
-        """Reset changed mask for row slot or if slot is None, reset changed for all columns."""
+        """Reset changed mask for row slot or if slot is None,
+          reset changed for all columns."""
 
         if slot:
             self.check_slot(slot)
@@ -255,7 +252,7 @@ class ListStore(object):
         row = [self.store[i][slot] for i in range(len(self.column_names))]
 
         if asdict:
-            return dict(zip(self.column_names, row ))
+            return dict(zip(self.column_names, row))
         else:
 
             return row
@@ -339,7 +336,8 @@ class ListStore(object):
            in any of the new rows prevents update of all rows
            in the list, something like a database transaction."""
 
-        if list_of_lists is None or not isinstance(list_of_lists,( list, tuple )):
+        if list_of_lists is None or not isinstance(list_of_lists,
+                                                   (list, tuple)):
             raise ListStoreError("Extend: No input list or tuple provided.")
 
         # resolve defaults
@@ -364,7 +362,8 @@ class ListStore(object):
                 new_list.append(lst)
 
         if len(errs) > 0:
-            raise ListStoreError("Extend Error: Not enough values or defaults", errs)
+            raise ListStoreError("Extend Error: Not enough values or defaults",
+                                 errs)
 
         # new_list is the input list with defaults
 
@@ -398,7 +397,8 @@ class ListStore(object):
 
         self.check_slot(row)
 
-        popped_row = [self.store[i].pop(row) for i in range(len(self.column_names)) ]
+        popped_row = [self.store[i].pop(row)
+                      for i in range(len(self.column_names))]
 
         for i in range(len(self.column_names)):
             self.changed[i] = bit_remove(self.changed[i], row)
@@ -459,19 +459,22 @@ class ListStore(object):
 
     """ Index Methods """
 
-    def set_indexer(self, indexer_cls:'IndexerClass' = None, usertypes:list = None ):
+    def set_indexer(self, indexer_cls: 'IndexerClass' = None,
+                          usertypes: list = None):
         """Create indexer with external *class* instance.  Awkward, but this
         allows basic ListStore to avoid the overhead of importing the
         Indexer class and may save a significant amount of working memory
-        for the import ( says 13K -> 9K ? ). Ref should be OK, but check __del__.
-        The methods find and find_all can do much the same with less memory. """
+        for the import ( says 13K -> 9K ? ).
+        Ref should be OK, but check __del__.
+        The methods find and find_all can do much the same with less memory.
+        """
 
-        if not indexer_cls or not isinstance(indexer_cls, type ):
+        if not indexer_cls or not isinstance(indexer_cls, type):
             raise ListStoreError('Set index function needs Indexer class.')
 
         self.indexer = indexer_cls(self.column_names,
                                    self.store,
-                                   usertypes if usertypes else [] )
+                                   usertypes if usertypes else [])
 
     @property
     def index(self) -> dict:
@@ -535,18 +538,19 @@ class TupleStore(ListStore):
         yield from [self.ntuple_factory(*row) for row in zip(*self.store)]
 
     def make_namedtuple(self, tup_values: list) -> tuple:
-        """Make tuple with defaults according to spec., then return, no update."""
+        """Make tuple with defaults according to spec.,
+         just gerenate tuple, no update to _store."""
 
         tp = self.resolve_defaults(tup_values)
         return self.ntuple_factory(*tp)
 
-    def get_row(self, slot: int, asdict=False) -> tuple: # or dict
+    def get_row(self, slot: int, asdict=False) -> tuple:  # or dict
         """Get row using slot, return namedtuple or dict."""
 
         row = super().get_row(slot, asdict)
 
         if asdict:
-            return row # in dict form
+            return row  # in dict form
         else:
             return self.ntuple_factory(*row)
 
@@ -555,7 +559,6 @@ class TupleStore(ListStore):
         int_list = self.resolve_slots(int_or_list)
 
         return [self.get_row(i) for i in int_list]
-
 
     def pop(self, slot: int) -> tuple:
         """pop slot number"""
@@ -566,8 +569,6 @@ class TupleStore(ListStore):
     def dump(self) -> list[tuple]:
         """ dump entire list[list] as list of named tuples """
         yield from [self.ntuple_factory(*row) for row in zip(*self.store)]
-
-
 
 
 def display_store(lstore):

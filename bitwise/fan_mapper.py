@@ -2,7 +2,13 @@
 
 from random import random
 
-from iomapper import IOMapper, Map, MDEBUG, MM
+from iomapper import IOMapper, Map, MM
+import iomapper
+
+MDEBUG = False  # need for both code debugging and iomap debugging
+# MDEBUG = True  # need for both code debugging and iomap debugging
+
+iomapper.MDEBUG  = MDEBUG
 
 from lib.vdict import VolatileDict, RO, checkstats
 from lib.core.functools import partial

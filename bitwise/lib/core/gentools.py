@@ -14,14 +14,13 @@ Warning: not fully tested.
 def add(a, b):
     "Same as a + b."
     return a + b
-    
+
 def mul(a, b):
     "Same as a * b."
     return a * b
 
 def accumulate(iterable, function=add, *, initial=None):
-
-    'Return running totals'
+    "Return running totals"
     # accumulate([1,2,3,4,5]) → 1 3 6 10 15
     # accumulate([1,2,3,4,5], initial=100) → 100 101 103 106 110 115
     # accumulate([1,2,3,4,5], operator.mul) → 1 2 6 24 120
@@ -42,7 +41,7 @@ def accumulate(iterable, function=add, *, initial=None):
 def batched(iterable, n):
 
     # batched('ABCDEFG', 3) → ABC DEF G
-    
+
     if n < 1:
         raise ValueError('n must be at least one')
     iterator = iter(iterable)
@@ -52,17 +51,17 @@ def batched(iterable, n):
 def chain(*iterables):
 
     # chain('ABC', 'DEF') → A B C D E F
-    
+
     for iterable in iterables:
         yield from iterable
 
 def from_iterable(iterables):
 
     # chain.from_iterable(['ABC', 'DEF']) → A B C D E F
-    
+
     for iterable in iterables:
         yield from iterable
-        
+
 def isiterable(it):
     """Needed.  Mpy doesn't implement __iter__ for list, etc."""
 
@@ -83,14 +82,14 @@ def flatten(items, ignore_types=(str, bytes, dict)):
 def compress(data, selectors):
 
     # compress('ABCDEF', [1,0,1,0,1,1]) → A C E F
-    
+
     return (datum for datum, selector in zip(data, selectors) if selector)
 
 def count(start=0, step=1):
 
     # count(10) → 10 11 12 13 14 ...
     # count(2.5, 0.5) → 2.5 3.0 3.5 ...
-    
+
     n = start
     while True:
         yield n
@@ -99,7 +98,7 @@ def count(start=0, step=1):
 def cycle(iterable):
 
     # cycle('ABCD') → A B C D A B C D A B C D ...
-    
+
     saved = []
     for element in iterable:
         yield element
@@ -126,7 +125,7 @@ def takewhile(predicate, iterable):
 
     # like accept until condition is False, triggers from on to off
     # takewhile(lambda x: x<5, [1,4,6,3,8]) → 1 4
-    
+
     for x in iterable:
         if not predicate(x):
             break
@@ -136,18 +135,18 @@ def filterfalse(predicate, iterable):
 
     # drop whenever condition is False
     # filterfalse(lambda x: x<5, [1,4,6,3,8]) → 6 8
-    
+
     if predicate is None:
         predicate = bool
     for x in iterable:
         if not predicate(x):
             yield x
-            
+
 def filtertrue(predicate, iterable):
 
     # drop whenever condition is True
     # filtertrue(lambda x: x<5, [1,4,6,3,8]) → 1, 4, 3
-    
+
     if predicate is None:
         predicate = bool
     for x in iterable:
@@ -221,13 +220,13 @@ def islice(iterable, istart=None, istop=None, istep=None):
 def pairwise(iterable):
 
     # pairwise('ABCDEFG') → AB BC CD DE EF FG
-    
+
     iterator = iter(iterable)
     a = next(iterator, None)
     for b in iterator:
         yield a, b
         a = b
-        
+
 def combinations(iterable, r):
 
     # combinations('ABCD', 2) → AB AC AD BC BD CD
@@ -302,7 +301,7 @@ def permutations(iterable, r=None):
 
 def product(*iterables, repeat=1):
 
-    # Like cartesian product 
+    # Like cartesian product
     # product('ABCD', 'xy') → Ax Ay Bx By Cx Cy Dx Dy
     # product(range(2), repeat=3) → 000 001 010 011 100 101 110 111
 
@@ -318,7 +317,7 @@ def product(*iterables, repeat=1):
 def repeat(obj, times=None):
 
     # repeat(10, 3) → 10 10 10
-    
+
     if times is None:
         while True:
             yield obj
@@ -329,7 +328,7 @@ def repeat(obj, times=None):
 def starmap(function, iterable):
 
     # starmap(pow, [(2,5), (3,2), (10,3)]) → 32 9 1000
-    
+
     for args in iterable:
         yield function(*args)
 
@@ -375,13 +374,4 @@ def zip_longest(*iterables, fillvalue=None):
                 value = fillvalue
             values.append(value)
         yield tuple(values)
-
-
-
-
-
-
-
-
-
 

@@ -16,6 +16,7 @@ try:
 except ImportError:
     from lib.core.bitops import power2, bit_indexes, bit_remove
 
+
 class IndexerError(Exception):
     pass
 
@@ -52,7 +53,7 @@ class Indexer(object):
             self._indexable.extend(usertypes)
 
         self._indexable = tuple(self._indexable)   # set ?
-        
+
     def __del___(self):
         self._store = None
 
@@ -61,11 +62,11 @@ class Indexer(object):
         """index values in a list or tuple"""
 
         """Build set of distinct, indexable values in alist"""
-        col_value_set = { value for value in alist if type(value) in cls._indexable }
-
+        col_value_set = {value for value in alist
+                         if type(value) in cls._indexable}
 
         """ init subdict """
-        sub_dict = { value:0 for value in col_value_set }
+        sub_dict = {value: 0 for value in col_value_set}
 
         """ iterate through alist and add/update int bit mask
             values in subdict """
@@ -85,8 +86,6 @@ class Indexer(object):
 
         self._index = {}
         self._indexed = []
-
-
 
     def index_attr(self, attr_name: str):
         """Create new index for attr.column name"""
@@ -108,7 +107,8 @@ class Indexer(object):
         del self.index[attr_name]
         self._indexed.remove(attr_name)
 
-    def update_index(self, attr_name: str, row_slot: int, old_value, new_value):
+    def update_index(self, attr_name: str, row_slot: int,
+                     old_value, new_value):
         """An altered row via set().  Need to unset bit on old value and
         set bit for new value."""
 
@@ -129,9 +129,9 @@ class Indexer(object):
         # OR new value
         self.index[attr_name][new_value] |= power2(row_slot)
 
-
     def append_index(self, list_in: list):
-        """New slot value, for appended row. No need to rebuild masks, just OR in new offset."""
+        """New slot value, for appended row. No need to rebuild masks,
+           just OR in new offset."""
 
         for col_name in self._index.keys():
 
@@ -155,8 +155,9 @@ class Indexer(object):
 
         for attr_name in self._indexed:
             for key, value in self.index[attr_name].items():
-                self.index[attr_name][key] = bit_remove( self.index[attr_name][key],
-                                                         row_slot )
+                self.index[attr_name][key] = bit_remove(
+                                                   self.index[attr_name][key],
+                                                   row_slot)
 
     def reindex(self):
         """build or rebuild index completely, after row pop/remove."""

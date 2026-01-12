@@ -39,10 +39,12 @@ from iomapper import IOMapper, Map, MDEBUG, MM, SetVal, Run
 import iomapper
 
 import ioengine
-from ioengine import  CMacro, RuleSetLoader, EDEBUG
+from ioengine import  CMacro, RuleSetLoader
 
-
+# EDEBUG = False  # for code debugging and action/condition debugging
 EDEBUG = True  # for code debugging and action/condition debugging
+
+ioengine.EDEBUG = EDEBUG  # for code debugging and action/condition debugging
 # EDEBUG = False  # for code debugging and action/condition debugging
 # iomapper.EDEBUG = True
 
@@ -105,8 +107,11 @@ if __name__ == '__main__':
     read_keys = ['get_temp', 'update_temp_hist', 'update_fan_hist', 'fan_overheating', ]
 
 
-    ioeng = ioengine.TransactorEngine(iom, conditions=conditions, readkeys=read_keys,
-                                cmacros=dcmacros, conflict_sets=conflist )
+    ioeng = ioengine.TransactorEngine(iom,
+                                      conditions=conditions,
+                                      readkeys=read_keys,
+                                      cmacros=dcmacros,
+                                      conflict_sets=conflist )
 
     checkstats(iom.values)
     print()
@@ -190,18 +195,11 @@ if __name__ == '__main__':
     print('--> Creating RuleSetLoader \n')
     loader = FanRuleSetLoader()
     filename = 'fan_engine'
-    
+
+    print('--> Saving CheapFan ruleset to json file after preparing types\n')
     loader.save(ioedict, filename)
     
-    '''   FIXED ?  
-    if is_micropython():
-        print()
-        print('At this point, MicroPython will cause a JSON exception.  Maybe MRO ?')
-        print("Sorry bout that - it's been a very persistent bug, still working on it.")
-        print()
-    '''
-
-    print('--> Loading from json file and restoring types\n')
+    print('--> Loading CheapFan ruleset from json file with restored types\n')
     from_dict = loader.load(filename)
 
     print('Original dict == Restored dict ---> ', ioedict == from_dict)
@@ -219,7 +217,8 @@ if __name__ == '__main__':
     EDEBUG = True
     # EDEBUG = False
 
-    print('--> Creating new instance of ioengine from dict \n')
+    print('--> Creating new instance of ioengine from dict, overriding\n')
+    print('--> the default iomapper instance with existing iomapper. \n')
     ioeng2 =  ioengine.TransactorEngine(iom, Evaluator, from_dict=from_dict )
 
     print(f'Values dict, with same values as the end of {run_times} cycle,')
