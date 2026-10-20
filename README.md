@@ -22,9 +22,11 @@ IOEngine demonstates what may be an useful application of binary indexing to bui
 
  See the [IOEngine](https://github.com/billbreit/BitWiseApps/wiki/IOEngine) wiki page.
 
-**fan_engine.py**: An extended demo of of IOEngine, demonstating the flattening effect of a rule-based approach to orchestrating the interaction of multiple control levels.  This is the engine implmentation of the fan_example.py demo.
+**fan_engine.py**: An extended demo of the 'Transactor' version IOEngine which uses a simple retest all action triggers each binding cycle.  It also demonstrates the flattening effect of a rule-based approach to orchestrating the interaction of multiple control levels.  This is the rule-based engine implementation of the fan_example.py demo.
 
-The IOengine and Fan Engine Demo are in mid-stage development.  The real struggle from here on is going to be maintaining simplicity, keeping a small memory footprint, say under 60K in a practical usage scenario.    
+The IOengine and Fan Engine Demo are in mid-stage development.  The real struggle from here on is going to be maintaining simplicity, keeping a small memory footprint, say under 60K in a practical usage scenario. 
+
+**fan_monitor.py**: An demo of the 'Monitor' version of the IOEngine.  It uses a more sophisticated algorithm by detecting changes in the values dictionary and chasing dependencies to the action trigger rules, only testing actions where triggering conditions might have changed from the previous binding cycle.  It seems to save testing of about 30% of actions across cycles, at the cost of significant overhead.  My guess is that the breakeven point is about 20-30 action rules [ Needs Testing ! ].     
 
 **iomapper.py**: A module for generalizing external bind requests, saving a lot of gory details about call structure and parameters.  With a little logic thrown into the mix, it should provide a foundation for a fairly simple process engine.
 
