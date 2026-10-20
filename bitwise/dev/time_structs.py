@@ -27,11 +27,11 @@ except:
 fix_paths()
 
 
-from tuplestore import ListStore, TupleStore
-from tablestore import TableStore, TableDef, ColDef
-from indexer import Indexer
+from lib.tuplestore import ListStore, TupleStore
+from lib.tablestore import TableStore, TableDef, ColDef
+from lib.indexer import Indexer
 
-from dev.vdict import VolatileDict
+from lib.vdict import VolatileDict
 
 # from random import randint
 

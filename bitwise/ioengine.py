@@ -8,14 +8,14 @@ author:     Bill Breitmayer
 
 IOEngine is a prototype of a process engine (driver) for an IOMap.
 
-IOEngine is a state-transition engine (driver) for the actions definied in
+IOEngine is a state-transition engine (driver) for the actions defined in
 an IOMap.  IOEngine drives an IOMap, like a multi-step process engine.
 
 The basic flow is from a values dictionary binding to evaluaions of conditions
 using the values to actions using the conditions as triggers to perform the
 action.
 
-Keys ( event values_changed in values dict )
+Keys ( event is values_changed > 0 in values dict )
    - used in ->  Conditions
        - used in ->  Action Triggers
 
@@ -46,8 +46,7 @@ from jfloader import JSONFileLoader
 
 from lib.core.utils import is_micropython
 from lib.core.gentools import chain
-from lib.core.bitops import power2, bit_indexes, more_than_one_bit_set
-from lib.core.bitops import bitslice_set
+from lib.core.bitops import power2, bit_indexes, diff, all_of, bitslice_set
 
 from lib.evaluator import Evaluator, Condition
 
@@ -821,8 +820,6 @@ class TransactorEngine(IOEngineBase):
 
     def __init__(self, *args, **kwargs):
 
-        # print('TE init ', args, kwargs )
-        # print('TE init ', args[0].values )
 
         super().__init__(*args, **kwargs)
 
@@ -879,7 +876,7 @@ class TransactorEngine(IOEngineBase):
                 print()
 
             for i, xref in enumerate(self.action_trigger_xref):
-                if (xref[1] & self.cond_evals) == xref[1]:
+                if all_of(xref[1], self.cond_evals):  # trigger
                     if EDEBUG:
                         print(
                           f'Action {i} triggered: {xref[1]:>08b} -> {xref[0]}')
@@ -971,6 +968,289 @@ class TransactorEngine(IOEngineBase):
         out('')
 
         return '\n'.join(einfo)
+ 
+saved_actions = 0   # action tests saved by using monitor alg vs. transactor, kludgy
+        
+class MonitorEngine(IOEngineBase):
+    """Monitor Engine is optimized [needs testing] for rulsets larger
+       than 20-30 where data values and condition using the values,
+       for floats particularly, that may not change from one binding
+       cycle to the next.
+    """
+
+    _export_attrs = ['mapper', 'evaluator', 'conditions', 'read_keys',
+                     'cond_macros', 'conflict_sets', 'condition_set',
+                     'action_trigger_xref', 'cond_actions_xref', 'key_conds_xref',
+                     'cond_keys_xref', 'keys_used' ]
+
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, **kwargs )
+
+        # action-to-cond(trigger) xref,when int matches current eval, do action
+
+        # self.action_trigger_xref:list[str, int] = self._build_action_trigger_xref()
+
+        self.cond_actions_xref: list[int] = self._build_cond_actions_xref()
+
+        cond_keys: list[tuple] = self._build_cond_keys()
+
+        # key-to-condition xref,
+        self.key_conds_xref: dict[str.int] = self._build_key_conds_xref()
+
+        # condition-to-keys xref, Not used yet
+
+        self.cond_keys_xref:list = self._build_cond_keys_xref()
+
+        self.keys_used:int = self._build_keys_used()
+
+        if EDEBUG:
+            used_changed = self.keys_used & self.values.changed
+            print('Values used and changed: ', bin(used_changed), '-> bit_index values.changed.' )
+            for index in bit_indexes(used_changed):
+                key = self.values.vkeys[index]
+                print(f'  {key}  {self.values[key]}')
+            print()
+
+        if EDEBUG:
+            print('Engine Info')
+            print(self.engine_info())
+            print()
+
+    def run_cycle(self):
+        """Run a binding cycle for iomapper.  This is the main entry
+           point into IOEngine.
+
+           As set up, it runs in 'montitor mode', using _find_changed_actions."""
+
+        global saved_actions
+
+        self.mapper.read_into_values(self.read_keys)   # state changing
+
+        if EDEBUG:
+            print()
+            print('Updated value dict: ')
+            print(self.values)
+            print()
+
+        if EDEBUG:
+            print('# Monitor Evaluation  ( evaluate by changes )')
+
+        # test engine type.  If 'monitor', else range(len(action_trigger_xref))
+
+        changed_actions = self._find_changed_actions()
+
+        if EDEBUG:
+            print('Found changed actions -> ', changed_actions)
+            saved = len(self.action_trigger_xref) - len(changed_actions)
+            print(f'Saved testing {saved} actions.')
+            print()
+            saved_actions += saved
+
+        actions = []
+
+        # changed_keys = list(set(self.values.keys_changed()).
+        #                  intersection(set(self.key_conds_xref.keys())))
+
+        if changed_actions:
+            if EDEBUG: print('Changed actions ', changed_actions)
+
+            # self.evaluate_all_conds()
+
+            if EDEBUG:
+                print('Evaluated conditions: ', bin(self.cond_evals))
+                print()
+
+            for i in changed_actions:
+                action = self.action_trigger_xref[i][0]
+                xref = self.action_trigger_xref[i][1]
+                if all_of(xref, self.cond_evals):    # trigger
+                    if EDEBUG: print(f'Action {i} triggered: {xref:>08b} -> {action}')
+                    if action not in actions:
+                        if EDEBUG: print(f"Action '{action}' added to actions list.")
+                        actions.append(action)
+                    else:
+                        if EDEBUG: print(f"Duplicate action '{action}' not added to actions list.")
+
+        else:
+            pass  # debugging
+
+        if self.conflict_sets and actions:   # any actions to test
+
+            actions_set = set(actions)
+            for conflict_set in self.conflict_sets:
+                if len(set(actions_set).intersection(conflict_set)) > 1:
+                    raise IOEngineError(f'Conflicting actions in action list ', actions)
+
+        for action in actions:
+            if EDEBUG: print('Adding action to agenda: ', action, '\n')
+            self.add_agenda(Run(action))
+
+    def _find_changed_actions(self) -> list[int]:
+        """For 'monitor mode' engine, based on only binding net changes and their
+           dependencies.  Find *potentially* changed triggers for actions.
+
+           changed value keys -> changed conditions,
+                                 evaluate changed condtions -> changed actions.
+
+           Returns a list of action indexes for re-test in action_trigger_xref.
+           The action trigger may fire ( match ) or not.
+
+           This optimization gurantees that a tigger won't be tested with
+           the same conditions between one iomapper binding cycle and the next. """
+
+        if EDEBUG: print('--> finding changed actions\n')
+
+        if EDEBUG:
+            print(f'Values changed:  {self.values.changed:012b}')
+            print(f'Values used:     {self.keys_used:012b}')
+
+        changed_keys = [ self.values.vkeys[index] for index in
+            bit_indexes(self.values.changed & self.keys_used)]
+
+        if EDEBUG:
+            print('Keys changed:         ', self.values.keys_changed())
+            print('Keys changed and used ', changed_keys)
+
+        if not changed_keys:  # Nothing changed and used
+            if EDEBUG: print('--> No keys changed.')
+            return []
+
+        # map value dict keys to conditions ( where used ), accumulate
+
+        conds_changed = 0
+        for key in changed_keys:
+            conds_changed |= self.key_conds_xref[key]
+
+        if EDEBUG:
+            print(f'Conditions changed:   {conds_changed:010b}')
+            print()
+
+        # evaluate potentially changed conditions
+
+        if EDEBUG: print(f'Current cond_evals:  {self.cond_evals:10b}')
+
+        new_cond_evals = self.cond_evals
+
+        # Set bit with result of eval ( eval -> True = 1, False = 0 )
+        for cond_index in bit_indexes(conds_changed):
+            if EDEBUG: print(f'  testing cond {cond_index} -> {self.condition_set[cond_index]}')
+            new_cond_evals = bitslice_set(
+                                 new_cond_evals,
+                                 cond_index,
+                                 1,
+                                 int(self.evaluate_cond(
+                                       self.condition_set[cond_index])))
+        if EDEBUG: print()
+
+        cond_eval_diff = diff(self.cond_evals, new_cond_evals)
+
+        # On first pass, need cond diffs from changed keys to get actions,
+        # but won't other bind other T/F cond evals, force init.
+
+        if self.cond_evals == 0:
+            self.evaluate_all_conds()  # exception for first pass
+            if EDEBUG:
+                print(f'-> Initializing cond_evals from 0 to {self.cond_evals:010b}')
+                print()
+        else:
+            self.cond_evals = new_cond_evals
+
+        if EDEBUG:
+            print(f'new_cond_evals:  {new_cond_evals:10b}')
+            print(f'cond_eval_diff:  {cond_eval_diff:10b}')
+
+        if cond_eval_diff == 0:  # no change to cond eval, no actions
+            if EDEBUG: print('--> No conditions changed.')
+            return []
+
+        if EDEBUG: print('Find changed actions')
+
+        # map changed conditions to actions where used, accumulate
+
+        actions_changed = 0
+        for cond_index in bit_indexes(cond_eval_diff):
+            if EDEBUG: print(f'  cond {cond_index} {self.cond_actions_xref[cond_index]:010b}')
+            actions_changed |= self.cond_actions_xref[cond_index]
+
+        # applied to test actions in action_trigger_xref
+        return bit_indexes(actions_changed)
+
+
+    def engine_info(self):
+
+        einfo = []
+        out = einfo.append
+
+        out('IOEngine Info: External and Internal Structures')
+        out('')
+
+        out(f'Engine Type: {self.__class__}')
+        out('')
+
+        out('Condition CMacro() expansions')
+        out('cond_macros: ')
+        for k, v in self.cond_macros.items():
+            out(f"  {k}:     CMacro('{k}') -->:")
+            for c in v:
+                out(f'    {c}')
+            out('')
+        out('')
+
+        out("Expanded conditions:   ( action: [Conditions] ) ")
+        out('')
+        for k, v in  self.conditions.items():
+            out(f'  {k}:' )
+            if isinstance(v[0], list):
+                # out('v[0] is list', v[0])
+                for conds in v:
+                    # out('DEBUG ', conds)
+                    for cond in conds:
+                        out(f'  {cond}')
+                    out('')
+            else:
+                # out('v[0] is not list', v[0])
+                for cond in v:
+                    out(f'  {cond}')
+                out('')
+        out('')
+
+        out('condition_set: list[Condition]')
+        for i, cond in enumerate(self.condition_set):
+            out(f"  'cond {i}'   {cond}")
+        out('')
+
+        out('conflict sets: list[set]')
+        out(f'  {self.conflict_sets}')
+        out('')
+
+        out('action_trigger_xref: list[tuple[str,int]] ')
+        for i, at_xref in enumerate(self.action_trigger_xref):
+            out(f"  'action {i}'  {at_xref[0]}  <--  0b{at_xref[1]:>09b}")
+        out('')
+
+        out('cond_actions_xref: list[int] (inverted action_trigger_xref)')
+        for i, ref in enumerate(self.cond_actions_xref):
+            out(f"  'cond {i}'   {ref:010b}")
+        out('')
+
+        out(f'Keys used, mapped to values dict: int {bin(self.keys_used)}')
+        out('')
+
+        out('key_conds_xref:  dict[str,int], value key used in conditions -> cond_set.')
+        for key, cond in self.key_conds_xref.items():  # tuples
+            out(f'  {key:16}  {cond:010b}')
+        out('')
+
+        out('cond_keys_xref: list[int], condition using value keys. Inverse of key_conds_xref.')
+        for i, ck_xref in enumerate(self.cond_keys_xref):  # tuples
+            out(f"  'condition {i}'  {ck_xref:014b}")
+        out('')
+
+
+        return '\n'.join(einfo)
+        
+
 
 
 if __name__ == '__main__':
@@ -1058,15 +1338,6 @@ if __name__ == '__main__':
 
     loader = RuleSetLoader(iomappers={'BasicFanIOMapper': BasicFanIOMapper})
 
-    '''
-    Seems to be working now.
-    if is_micropython(): # JSON bug
-        print()
-        print('### Running mpy with defective JSON                    ###')
-        print('### Skipping IOEngine save and using pre-built ruleset ###')
-        print()
-    '''
-
     loader.save(ioedict)
     print('--> Saved ioe_dict to json \n')
     print('--> deleting ioeng instance')
@@ -1074,8 +1345,6 @@ if __name__ == '__main__':
     del (ioeng)
 
     print('Testing load json  file from ioenginetest.json')
-
-    EDEBUG = False
 
     print('loader create from_dict to build new IOEngine instance \n')
     from_dict = loader.load()

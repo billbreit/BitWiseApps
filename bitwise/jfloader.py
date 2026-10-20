@@ -75,7 +75,8 @@ class JSONFileLoader:
         data = self.prepare_types(data)
 
         fname = self.make_filename(filename)
-        print('save fname ', fname)
+        if JFLDebug:
+            print('save fname ', fname)
         with open(fname, "wt") as jfile:
             json.dump(data, jfile)
 

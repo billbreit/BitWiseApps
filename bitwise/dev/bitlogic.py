@@ -29,7 +29,7 @@ sys.path.append(parentdir)
 
 from math import log2, floor, ceil
 from random import randint, choice
-from lib.functools import partial
+from lib.core.functools import partial
 
 
 class BitLogicException(Exception):
@@ -54,12 +54,6 @@ def genrandint(size):
         
     return rint  
 
-
-nl = print
-DEBUG = False
-
-
-
 def is_bitint( n:int ):
     """Test for basic bitint type, a non-negative integer.
        This is primarily a ones-complement interpretation for indexing into lists.
@@ -70,8 +64,6 @@ def is_bitint( n:int ):
         return False
         
     return True
-
-
 
 
 """ Functions """
@@ -336,7 +328,7 @@ def morethanone_of( x:int, y:int ):
     return t != floor(t)
     
 def all_of( x:int, y:int ):
-    """All of x in y"""
+    """All of x in y, equiv. to set.issubset"""
     if x == 0: return False 
     return x & y == x
 
@@ -475,6 +467,10 @@ def bit_insert(bint:int, index:int, value=1):
 
 
 if __name__=='__main__':
+
+
+    nl = print
+    DEBUG = False
 
     nl()
     nl()

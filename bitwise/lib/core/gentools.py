@@ -1,7 +1,7 @@
 
 """ A full set of itertools functions, copped from Python 12 itertools
-documentation ("roughly equivalent to"), for micropython compatibility.
-Also good examples of generator constructs.
+documentation ("roughly equivalent to"), some fixes for micropython
+compatibility.  Also good examples of generator constructs.
 
 This module is called 'gentools' to avoid confusion ( my own ) with
 several semi-offical mpy modules called itertools.
@@ -21,9 +21,9 @@ def mul(a, b):
 
 def accumulate(iterable, function=add, *, initial=None):
     "Return running totals"
-    # accumulate([1,2,3,4,5]) → 1 3 6 10 15
-    # accumulate([1,2,3,4,5], initial=100) → 100 101 103 106 110 115
-    # accumulate([1,2,3,4,5], operator.mul) → 1 2 6 24 120
+    # accumulate([1,2,3,4,5]) -> 1 3 6 10 15
+    # accumulate([1,2,3,4,5], initial=100) -> 100 101 103 106 110 115
+    # accumulate([1,2,3,4,5], operator.mul) -> 1 2 6 24 120
 
     iterator = iter(iterable)
     total = initial
@@ -38,26 +38,46 @@ def accumulate(iterable, function=add, *, initial=None):
         total = function(total, element)
         yield total
 
+"""
 def batched(iterable, n):
+    "Altered walrus"
 
-    # batched('ABCDEFG', 3) → ABC DEF G
+    # batched('ABCDEFG', 3) -> ABC DEF G
 
     if n < 1:
         raise ValueError('n must be at least one')
     iterator = iter(iterable)
-    while batch := tuple(islice(iterator, n)):
+    while batch := tuple(islice(iterator, n)):  #  mpy and Py3.9
         yield batch
+
+    batch = tuple(islice(iterator, n))
+    while batch:
+        yield batch
+        batch = tuple(islice(iterator, n))
+    """
+    
+def batched(iterable, n, *, strict=False):
+    # batched('ABCDEFG', 3) -> ABC DEF G
+    if n < 1:
+        raise ValueError('n must be at least one')
+    iterator = iter(iterable)
+    batch = tuple(islice(iterator, n))
+    while batch:
+        if strict and len(batch) != n:
+            raise ValueError('batched(): incomplete batch')
+        yield batch
+        batch = tuple(islice(iterator, n))
 
 def chain(*iterables):
 
-    # chain('ABC', 'DEF') → A B C D E F
+    # chain('ABC', 'DEF') -> A B C D E F
 
     for iterable in iterables:
         yield from iterable
 
 def from_iterable(iterables):
 
-    # chain.from_iterable(['ABC', 'DEF']) → A B C D E F
+    # chain.from_iterable(['ABC', 'DEF']) -> A B C D E F
 
     for iterable in iterables:
         yield from iterable
@@ -81,14 +101,14 @@ def flatten(items, ignore_types=(str, bytes, dict)):
 
 def compress(data, selectors):
 
-    # compress('ABCDEF', [1,0,1,0,1,1]) → A C E F
+    # compress('ABCDEF', [1,0,1,0,1,1]) -> A C E F
 
     return (datum for datum, selector in zip(data, selectors) if selector)
 
 def count(start=0, step=1):
 
-    # count(10) → 10 11 12 13 14 ...
-    # count(2.5, 0.5) → 2.5 3.0 3.5 ...
+    # count(10) -> 10 11 12 13 14 ...
+    # count(2.5, 0.5) -> 2.5 3.0 3.5 ...
 
     n = start
     while True:
@@ -97,7 +117,7 @@ def count(start=0, step=1):
 
 def cycle(iterable):
 
-    # cycle('ABCD') → A B C D A B C D A B C D ...
+    # cycle('ABCD') -> A B C D A B C D A B C D ...
 
     saved = []
     for element in iterable:
@@ -110,7 +130,7 @@ def cycle(iterable):
 def dropwhile(predicate, iterable):
 
     # like drop until condition is False, triggers from off to on
-    # dropwhile(lambda x: x<5, [1,4,6,3,8]) → 6 3 8
+    # dropwhile(lambda x: x<5, [1,4,6,3,8]) -> 6 3 8
 
     iterator = iter(iterable)
     for x in iterator:
@@ -124,7 +144,7 @@ def dropwhile(predicate, iterable):
 def takewhile(predicate, iterable):
 
     # like accept until condition is False, triggers from on to off
-    # takewhile(lambda x: x<5, [1,4,6,3,8]) → 1 4
+    # takewhile(lambda x: x<5, [1,4,6,3,8]) -> 1 4
 
     for x in iterable:
         if not predicate(x):
@@ -134,7 +154,7 @@ def takewhile(predicate, iterable):
 def filterfalse(predicate, iterable):
 
     # drop whenever condition is False
-    # filterfalse(lambda x: x<5, [1,4,6,3,8]) → 6 8
+    # filterfalse(lambda x: x<5, [1,4,6,3,8]) -> 6 8
 
     if predicate is None:
         predicate = bool
@@ -145,7 +165,7 @@ def filterfalse(predicate, iterable):
 def filtertrue(predicate, iterable):
 
     # drop whenever condition is True
-    # filtertrue(lambda x: x<5, [1,4,6,3,8]) → 1, 4, 3
+    # filtertrue(lambda x: x<5, [1,4,6,3,8]) -> 1, 4, 3
 
     if predicate is None:
         predicate = bool
@@ -155,8 +175,8 @@ def filtertrue(predicate, iterable):
 
 def groupby(iterable, key=None):
 
-    # [k for k, g in groupby('AAAABBBCCDAABBB')] → A B C D A B
-    # [list(g) for k, g in groupby('AAAABBBCCD')] → AAAA BBB CC D
+    # [k for k, g in groupby('AAAABBBCCDAABBB')] -> A B C D A B
+    # [list(g) for k, g in groupby('AAAABBBCCD')] -> AAAA BBB CC D
 
     keyfunc = (lambda x: x) if key is None else key
     iterator = iter(iterable)
@@ -187,12 +207,14 @@ def groupby(iterable, key=None):
                 pass
 
 # def islice(iterable, *args):
-def islice(iterable, istart=None, istop=None, istep=None):
+def islice(iterable, start=None, stop=None, step=None):
 
-    # islice('ABCDEFG', 2) → A B
-    # islice('ABCDEFG', 2, 4) → C D
-    # islice('ABCDEFG', 2, None) → C D E F G
-    # islice('ABCDEFG', 0, None, 2) → A C E G
+    # islice('ABCDEFG', 2) -> A B
+    # islice('ABCDEFG', 2, 4) -> C D
+    # islice('ABCDEFG', 2, None) -> C D E F G
+    # islice('ABCDEFG', 0, None, 2) -> A C E G # doesn't work, use keywords
+    # islice('ABCDEFG', start=0, stop=6, step=2))) -> ['A', 'C', 'E']
+
 
     """
     s = slice(*args)  ## not in mpy !!!
@@ -203,23 +225,25 @@ def islice(iterable, istart=None, istop=None, istep=None):
     if start < 0 or (stop is not None and stop < 0) or step <= 0:
         raise ValueError
     """
-
-    start = 0 if istart is None else istart
-    stop = istop
-    step = 1 if istep is None else istep
-    if start < 0 or (stop is not None and stop < 0) or step <= 0:
+    
+    # trying to replicate slice defaulting
+    istart = 0 if stop is None else start
+    istop = start if stop is None else stop
+    istep = 1 if step is None else step
+    if istart < 0 or (istop is not None and istop < 0) or istep <= 0:
         raise ValueError
 
-    indices = count() if stop is None else range(max(start, stop))
-    next_i = start
+    indices = count() if istop is None else range(max(istart, istop))
+    next_i = istart
     for i, element in zip(indices, iterable):
         if i == next_i:
             yield element
-            next_i += step
+            next_i += istep
+            
 
 def pairwise(iterable):
 
-    # pairwise('ABCDEFG') → AB BC CD DE EF FG
+    # pairwise('ABCDEFG') -> AB BC CD DE EF FG
 
     iterator = iter(iterable)
     a = next(iterator, None)
@@ -229,8 +253,8 @@ def pairwise(iterable):
 
 def combinations(iterable, r):
 
-    # combinations('ABCD', 2) → AB AC AD BC BD CD
-    # combinations(range(4), 3) → 012 013 023 123
+    # combinations('ABCD', 2) -> AB AC AD BC BD CD
+    # combinations(range(4), 3) -> 012 013 023 123
 
     pool = tuple(iterable)
     n = len(pool)
@@ -252,7 +276,7 @@ def combinations(iterable, r):
 
 def combinations_with_replacement(iterable, r):
 
-    # combinations_with_replacement('ABC', 2) → AA AB AC BB BC CC
+    # combinations_with_replacement('ABC', 2) -> AA AB AC BB BC CC
 
     pool = tuple(iterable)
     n = len(pool)
@@ -272,8 +296,8 @@ def combinations_with_replacement(iterable, r):
 
 def permutations(iterable, r=None):
 
-    # permutations('ABCD', 2) → AB AC AD BA BC BD CA CB CD DA DB DC
-    # permutations(range(3)) → 012 021 102 120 201 210
+    # permutations('ABCD', 2) -> AB AC AD BA BC BD CA CB CD DA DB DC
+    # permutations(range(3)) -> 012 021 102 120 201 210
 
     pool = tuple(iterable)
     n = len(pool)
@@ -302,8 +326,8 @@ def permutations(iterable, r=None):
 def product(*iterables, repeat=1):
 
     # Like cartesian product
-    # product('ABCD', 'xy') → Ax Ay Bx By Cx Cy Dx Dy
-    # product(range(2), repeat=3) → 000 001 010 011 100 101 110 111
+    # product('ABCD', 'xy') -> Ax Ay Bx By Cx Cy Dx Dy
+    # product(range(2), repeat=3) -> 000 001 010 011 100 101 110 111
 
     pools = [tuple(pool) for pool in iterables] * repeat
 
@@ -316,7 +340,7 @@ def product(*iterables, repeat=1):
 
 def repeat(obj, times=None):
 
-    # repeat(10, 3) → 10 10 10
+    # repeat(10, 3) -> 10 10 10
 
     if times is None:
         while True:
@@ -327,7 +351,7 @@ def repeat(obj, times=None):
 
 def starmap(function, iterable):
 
-    # starmap(pow, [(2,5), (3,2), (10,3)]) → 32 9 1000
+    # starmap(pow, [(2,5), (3,2), (10,3)]) -> 32 9 1000
 
     for args in iterable:
         yield function(*args)
@@ -354,7 +378,7 @@ def _tee(iterator, link):
 
 def zip_longest(*iterables, fillvalue=None):
 
-    # zip_longest('ABCD', 'xy', fillvalue='-') → Ax By C- D-
+    # zip_longest('ABCD', 'xy', fillvalue='-') -> Ax By C- D-
 
     iterators = list(map(iter, iterables))
     num_active = len(iterators)
@@ -375,3 +399,18 @@ def zip_longest(*iterables, fillvalue=None):
             values.append(value)
         yield tuple(values)
 
+if __name__ == '__main__':
+
+    llen = len('ABCDEFG')
+    
+    
+    print("batched('ABCDEFG', 3)", list(batched('ABCDEFG', 3))) #  -> ABC DEF G
+
+    print("islice('ABCDEFG', 2)", list(islice('ABCDEFG', 2))) # -> A B
+    print("islice('ABCDEFG', 2, 4)", list(islice('ABCDEFG', 2, 4))) # -> C D
+    print("islice('ABCDEFG', 2, None)", list(islice('ABCDEFG', 2, None))) # -> C D E F G
+    print("islice('ABCDEFG', 0, None, 2)", list(islice('ABCDEFG', 0, None, 2))) # -> A C E G
+    print("islice('ABCDEFG', start=0, stop=6, step=2)", list(islice('ABCDEFG', start=0, stop=6, step=2))) 
+    print("islice('ABCDEFG', start=0, stop=llen step=2)", list(islice('ABCDEFG', start=0, stop=llen, step=2))) 
+    print("islice('ABCDEFG', start=0, step=2)", list(islice('ABCDEFG', start=0, step=2))) 
+    print("pairwise('ABCDEFG')", list(pairwise('ABCDEFG')))

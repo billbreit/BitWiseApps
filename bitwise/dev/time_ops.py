@@ -14,12 +14,18 @@ import math
 
 from random import randrange, choice, randint
 
+"""
 try:
     from utils import fix_paths
 except:
     from dev.utils import fix_paths
 fix_paths()
-    
+"""
+
+import init
+del init
+
+
 try:
     from bitlogic import genrandint
 except:

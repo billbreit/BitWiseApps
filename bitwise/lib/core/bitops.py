@@ -1,4 +1,4 @@
-"""Condensed and optimized version of bitlogic.py in dev directory."""
+"""Bit Logic Functions."""
 
 import math
 
@@ -17,7 +17,7 @@ def is_bitint( n: int ) -> bool:
     return True
 
 
-def bit_indexes(bint: int) -> list:
+def bit_indexes(bint: int) -> list[int]:
     """Make list of ints for indexes of bits that are set. Indexes are
        essentially the same as base-2 exponents.
        For example: bitIndexes(23) => [0, 1, 2, 4]
@@ -30,24 +30,16 @@ def bit_indexes(bint: int) -> list:
     while bint > 0:
         index = logar2(bint)
         bint &= (1 << index) - 1
-        bit_idx.insert(0, index)
-
+        bit_idx.append(index)
+    bit_idx.reverse()
+        
     return bit_idx
 
-def bit_count(bint: int) -> int:
-    """Count number of bits set in a binary integer.
-       bin(x).count('1') works for x >= 0. """
 
-    if bint < 0: return None  # error
+    
+"""Basic Binary/Boolean Tests """
 
-    count = 0
-    while bint > 0:
-        bint &= bint - 1
-        count += 1
-
-    return count
-
-def one_bit_set(bint: int):
+def one_bit_set(bint: int) -> bool:
     """Only one bit set in bint.
        alt -> if x!= 0: return 0 == (x & (x - 1)) """
 
@@ -58,7 +50,7 @@ def one_bit_set(bint: int):
 
     return 0 == (bint & (bint - 1))
 
-def more_than_one_bit_set(bint: int):
+def more_than_one_bit_set(bint: int) -> bool:
     """Only one bit set in bint.
        alt -> if x!= 0: return 0 == (x & (x - 1)) """
 
@@ -68,19 +60,51 @@ def more_than_one_bit_set(bint: int):
         return False
 
     return 0 != (bint & (bint - 1))
+    
+def one_of( x:int, y:int ) -> bool:
+    """Only one of x in y. """
+    if x == 0 or y ==0: return False
+    t = log2(x & y)
+    return t == floor(t)
+    
 
-def power2(power: int) -> int:
-    """Replace pow2 with faster power function, only works with ints."""
+def morethanone_of( x:int, y:int ) -> bool:
+    """More than one of x in y. """
+    if x == 0 or y==0: return False
+    t = log2(x & y)
+    return t != floor(t)
+    
+def all_of( x:int, y:int ) -> bool:
+    """All of x in y, equiv. to set.issubset."""
+    if x == 0: return False 
+    return x & y == x
 
-    if power < 0: return None  # error
+def any_of( x:int, y:int ) -> bool:
+    """Any of integer x in y. """
+    return x & y > 0
 
-    return 1 << power
+def none_of( x:int, y:int ) -> bool:
+    """None of x in y."""
+    return x & y == 0
+
+"""Basic logical 'vector' operations on bit integers. """
+
+def diff( x:int, y:int ) -> int:
+    """( 1, 0 ) or ( 0, 1 ), but not both nor neither ( XOR )"""
+    return x ^ y
+
+def match( x:int, y:int ) -> int:
+    """Like all_of, but returns matched bits rather than bool.
+    match(x, y) == 0 and not match(x, y) both work like none_of. """
+    
+    return x & y 
+
 
 
 """Python specific"""
 
 def py_bitlength( bint: int ) -> int:
-    "Very fast"
+    """Builtin, very fast, since py3.1"""
 
     if bint < 0: return None  # error
     if bint == 0: return 1 # unlike python, may need to rethink this
@@ -88,11 +112,18 @@ def py_bitlength( bint: int ) -> int:
     return bint.bit_length()
 
 def py_logar2( bint:int ) -> int:
-    """equivalent to floor(log2(x)) but faster"""
+    """equivalent to floor(log2(x)) but faster, returns int not float."""
 
     if bint <= 0: return None  # error
 
     return py_bitlength(bint) - 1
+
+def py_bitcount( bint: int ) -> int:
+    """py3.10+, Very fast"""
+
+    if bint < 0: return None  # error
+
+    return bint.bit_count()
 
 
 """MicroPython specific """
@@ -123,6 +154,19 @@ def mpy_bitlength(bint: int) -> int:
     if bint == 0: return 1  # unlike Py bit_length()
 
     return mpy_logar2(bint) + 1
+    
+def mpy_bitcount(bint: int) -> int:
+    """Count number of bits set in a binary integer.
+       bin(x).count('1') also works, but very slow on mpy. """
+
+    if bint < 0: return None  # error
+
+    count = 0
+    while bint > 0:
+        bint &= bint - 1
+        count += 1
+
+    return count
 
 
 try:  # Python
@@ -130,10 +174,25 @@ try:  # Python
     py_bitlen_avail = True
     bit_length = py_bitlength
     logar2 = py_logar2
-except Exception as e:    # micropython
+except AttributeError as e:    # micropython
     py_bitlen_avail = False
     bit_length = mpy_bitlength
     logar2 = mpy_logar2
+    
+try:
+    (123).bit_count()
+    py_bitcount_avail = True
+    bit_count = py_bitcount    
+except AttributeError as e:    # micropython and < py3.10
+    py_bitcount_avail = False
+    bit_count = mpy_bitcount
+    
+def power2(power: int) -> int:
+    """Replace pow2 with faster power function, only works with ints."""
+
+    if power < 0: return None  # error
+
+    return 1 << power
 
 
 """Bit and bitslice operations, list-like capabilities for integer."""
@@ -172,6 +231,7 @@ def bit_toggle(bint: int, index: int) -> int:
 
 
 def bit_remove(bint: int, index: int) -> int:
+    """Remove bit at index."""
 
     if bint < 0: return None  # error
     if index < 0 or index > bit_length(bint)-1: return bint
@@ -180,14 +240,18 @@ def bit_remove(bint: int, index: int) -> int:
 
 
 def bit_insert(bint: int, index: int, value: int = 0) -> int:
-    """insert before index"""
+    """insert bit value [0, 1] before index"""
 
     if value not in [0, 1] or bint < 0: return None  # error
 
     return (((bint >> index) << 1) | value) << index | bint & ((1 << index)-1)
-
+    
+""" Multi-bit/Bitslice operations, optimized, faster than theoretical limit,
+    possilby due to int vectorization support."""
+    
 
 def bitslice_get(bint: int, index: int, bit_len: int) -> int:
+    """Return bitlength bits at index."""  
 
     if bint < 0: return None  # error
 
@@ -195,7 +259,7 @@ def bitslice_get(bint: int, index: int, bit_len: int) -> int:
 
 
 def bitslice_set(bint: int, index: int, bit_len: int, value: int) -> int:
-    """overlay"""
+    """Overlay bitlength bits of value starting at index."""
 
     if bit_length(value) > bit_len or bint < 0: return None  # error
 
@@ -204,7 +268,7 @@ def bitslice_set(bint: int, index: int, bit_len: int, value: int) -> int:
 
 
 def bitslice_insert(bint: int, index: int, bit_len: int, value: int) -> int:
-    """Insert before index-th slot"""
+    """Insert bitlength bits of value before index-th slot"""
 
     if bit_length(value) > bit_len or bint < 0: return None  # error
 
@@ -213,6 +277,7 @@ def bitslice_insert(bint: int, index: int, bit_len: int, value: int) -> int:
 
 
 def bitslice_remove(bint: int, index: int, bit_len: int) -> int:
+    """Remove bitlength bits from index."""
 
     if bint < 0: return None
     if bint == 0: return 0
@@ -233,7 +298,7 @@ if __name__=='__main__':
     print('bit_length')
     print('-'*40)
     for x in vals:
-        print( bin(x), ' = ', bit_length(x) )
+        print( bin(x), ' = ', bit_length(x), bit_count(x))
     print()
 
     print('logar2, more like top_bit exp function than log')

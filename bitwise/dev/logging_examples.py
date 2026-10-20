@@ -1,3 +1,9 @@
+"""
+https://github.com/micropython/micropython-lib/tree/master/python-stdlib/logging
+"""
+
+
+
 
 import os, sys
 # os.chdir('dev')
@@ -6,9 +12,9 @@ import os, sys
 # import init
 
 try:
-    import dev.logging2 as logging
+    import dev.logging3 as logging
 except:
-    import logging2 as logging  # python windows ?
+    import logging3 as logging  # python windows ?
 
 print()
 print('##### Simple ####')
