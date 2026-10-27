@@ -38,6 +38,8 @@ EDEBUG = False    # name clash with EDEBUG in IOEngine
 
 # Poor man's typing
 
+AnyType = type(object())  # mostly works, may fail typing.Any tests 
+
 def x():
     return None
 deftype = type(x)
@@ -59,6 +61,7 @@ xxx = XXX(property)
 wraptype = type(xxx)  # <closure> in mpy
 
 del (x, xx, XX, xxx, XXX)
+
 
 """ ### Map ###
 
@@ -98,7 +101,7 @@ param to a stub function and let it resolve **dict keywords. TBD
 
 mnames = ['wrap',     # wrapper: get or set 'wrap action', or func-> func as 'constructor'
           'target',   # func: target of write ( update), wrap is setter
-          'params',   # list['Any']: param of wrap if target = None, else values key names for target
+          'params',   # list[AnyType]: param of wrap if target = None, else values key names for target
           'vreturn',  # str: key in values dict to set to return value
           'chain']    # list[str]: action keys in the iom dict, *unconditionally* executed,
                       # mostly for synch of values, deps. of vreturn above or
@@ -300,7 +303,7 @@ class IOMapper(object):
             print()
 
 
-    def read(self, key:str ) -> 'Any':
+    def read(self, key:str ) -> AnyType:
         """Bind a data/functional key/value. Read into the values dict."""
 
         wrap, target, params, vreturn, chain = mget(self.iomap, key)
@@ -331,7 +334,7 @@ class IOMapper(object):
 
         return v  # why not, likely None
 
-    def write(self, key:str ) -> 'Any':
+    def write(self, key:str ) -> AnyType:
         """Reads/in and writes/out are the same thing from a mapping
            perspective.  Strange construct but maybe more readable code
            to indicate an intended state change. """
@@ -416,7 +419,7 @@ class IOMapper(object):
                 else:
                     self.values[vreturn] = v  # whatever, may be None
 
-    def bind(self, wrap, target, params) -> 'Any':
+    def bind(self, wrap, target, params) -> AnyType:
         """Bind either data in values dict or bind atribute in object.
            Similar to a simple function call, either wrapped or not."""
         # if not hasattr(wrap, '__name__'):  # closure, not function, for mpy ?

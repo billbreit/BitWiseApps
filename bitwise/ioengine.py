@@ -46,7 +46,7 @@ from jfloader import JSONFileLoader
 
 from lib.core.utils import is_micropython
 from lib.core.gentools import chain
-from lib.core.bitops import power2, bit_indexes, diff, all_of, bitslice_set
+from lib.core.bitops import power2, bit_indexes, diff, diff_ones, all_of, bitslice_set
 
 from lib.evaluator import Evaluator, Condition
 
@@ -1128,8 +1128,7 @@ class MonitorEngine(IOEngineBase):
 
         # evaluate potentially changed conditions
 
-        if EDEBUG: print(f'Current cond_evals:  {self.cond_evals:10b}')
-
+        old_cond_evals = self.cond_evals
         new_cond_evals = self.cond_evals
 
         # Set bit with result of eval ( eval -> True = 1, False = 0 )
@@ -1143,7 +1142,10 @@ class MonitorEngine(IOEngineBase):
                                        self.condition_set[cond_index])))
         if EDEBUG: print()
 
-        cond_eval_diff = diff(self.cond_evals, new_cond_evals)
+        cond_eval_diff= diff(self.cond_evals, new_cond_evals)
+        
+        # new evals to 0->1, filter out 1->0, will not tigger action 
+        cond_eval_diff_f = diff_ones(self.cond_evals, new_cond_evals)
 
         # On first pass, need cond diffs from changed keys to get actions,
         # but won't other bind other T/F cond evals, force init.
@@ -1157,10 +1159,13 @@ class MonitorEngine(IOEngineBase):
             self.cond_evals = new_cond_evals
 
         if EDEBUG:
-            print(f'new_cond_evals:  {new_cond_evals:10b}')
-            print(f'cond_eval_diff:  {cond_eval_diff:10b}')
+            print(f'old_cond_evals:                  {old_cond_evals:10b}')
+            print(f'new_cond_evals:                  {new_cond_evals:10b}')
+            print(f'cond_eval_diff:                  {cond_eval_diff:10b}')
+            print(f'cond_eval_diff (filtered false): {cond_eval_diff_f:10b}')
+            print()
 
-        if cond_eval_diff == 0:  # no change to cond eval, no actions
+        if cond_eval_diff_f == 0:  # no change to cond eval, no actions
             if EDEBUG: print('--> No conditions changed.')
             return []
 
@@ -1169,7 +1174,7 @@ class MonitorEngine(IOEngineBase):
         # map changed conditions to actions where used, accumulate
 
         actions_changed = 0
-        for cond_index in bit_indexes(cond_eval_diff):
+        for cond_index in bit_indexes(cond_eval_diff_f):
             if EDEBUG: print(f'  cond {cond_index} {self.cond_actions_xref[cond_index]:010b}')
             actions_changed |= self.cond_actions_xref[cond_index]
 

@@ -15,6 +15,13 @@ def is_bitint( n: int ) -> bool:
         return False
 
     return True
+    
+def power2(power: int) -> int:
+    """Replace pow2 with faster power2 function, only works with ints."""
+
+    if power < 0: return None  # error
+
+    return 1 << power
 
 
 def bit_indexes(bint: int) -> list[int]:
@@ -75,7 +82,8 @@ def morethanone_of( x:int, y:int ) -> bool:
     return t != floor(t)
     
 def all_of( x:int, y:int ) -> bool:
-    """All of x in y, equiv. to set.issubset."""
+    """All of x in y, equiv. to set.issubset.
+      Note that all_of(x, y) != all_of(y,x) unless x==y.  """
     if x == 0: return False 
     return x & y == x
 
@@ -87,11 +95,23 @@ def none_of( x:int, y:int ) -> bool:
     """None of x in y."""
     return x & y == 0
 
-"""Basic logical 'vector' operations on bit integers. """
+"""Basic logical 'vector' operations on bit integers.
+   Note that diff == diff_ones | diff_zeros.   """
 
 def diff( x:int, y:int ) -> int:
     """( 1, 0 ) or ( 0, 1 ), but not both nor neither ( XOR )"""
     return x ^ y
+    
+def diff_ones( old:int, new:int ) -> int:
+    """Filter out evals that have gone from 1 -> 0.  Useful for ECA engine,
+       condition eval as False will not trigger action, no need to test.
+       In an inference engine, 0->1 might lead to an assertion."""
+    return (old ^ new) & new 
+    
+def diff_zeros( old:int, new:int ) -> int:
+    """Filter out evals that have gone from 0 -> 1.  Useful for inference
+       engine, condition 1->0 may lead to a retraction."""
+    return (old ^ new) & old 
 
 def match( x:int, y:int ) -> int:
     """Like all_of, but returns matched bits rather than bool.
@@ -183,17 +203,10 @@ try:
     (123).bit_count()
     py_bitcount_avail = True
     bit_count = py_bitcount    
-except AttributeError as e:    # micropython and < py3.10
+except AttributeError as e:    # micropython or < py3.10
     py_bitcount_avail = False
     bit_count = mpy_bitcount
     
-def power2(power: int) -> int:
-    """Replace pow2 with faster power function, only works with ints."""
-
-    if power < 0: return None  # error
-
-    return 1 << power
-
 
 """Bit and bitslice operations, list-like capabilities for integer."""
 
