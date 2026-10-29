@@ -46,7 +46,7 @@ from jfloader import JSONFileLoader
 
 from lib.core.utils import is_micropython
 from lib.core.gentools import chain
-from lib.core.bitops import power2, bit_indexes, diff, diff_ones, all_of, bitslice_set
+from lib.core.bitops import power2, bit_indexes, diff, diffTrue, all_of, bitslice_set
 
 from lib.evaluator import Evaluator, Condition
 
@@ -1145,7 +1145,7 @@ class MonitorEngine(IOEngineBase):
         cond_eval_diff= diff(self.cond_evals, new_cond_evals)
         
         # new evals to 0->1, filter out 1->0, will not tigger action 
-        cond_eval_diff_f = diff_ones(self.cond_evals, new_cond_evals)
+        cond_eval_diff_f = diffTrue(self.cond_evals, new_cond_evals)
 
         # On first pass, need cond diffs from changed keys to get actions,
         # but won't other bind other T/F cond evals, force init.
@@ -1302,13 +1302,13 @@ if __name__ == '__main__':
         n = 1
         while n <= limit:
 
-            print('### Running cycle: ', n)
+            print('### Running cycle:', n, '\n')
             ioengn.run_cycle()
 
             if n == 4:
                 print()
                 print('-> Injecting switch_on into agenda')
-                ioeng.add_agenda(Run('switch_on'))
+                ioengn.add_agenda(Run('switch_on'))
                 print()
 
             if n == 8:
@@ -1384,6 +1384,30 @@ if __name__ == '__main__':
     print('Run engine 3 cycles ... see if it still works \n')
 
     erun(ioeng2, 3)
+    
+    print('End YtansactorEngine from restored json file \n')
+    
+    del(ioeng2, iom)
+    
+    print('=====  Creating MonitorEngine instance ===== \n')
+    
+    iom = BasicFanIOMapper()
+    
+    ioeng3 = MonitorEngine(iom,
+                           conditions=a_conditions,
+                           conflict_sets=conflicts)
+
+    checkstats(ioeng3.values)
+    
+    print('Run MonitorEngine 6 cycles  \n')
+
+    erun(ioeng3, 6)
+
+        
+    print('End Monitor Engine test\n')
+    
+    
+
 
     print('THE END')
 

@@ -63,6 +63,47 @@ wraptype = type(xxx)  # <closure> in mpy
 del (x, xx, XX, xxx, XXX)
 
 
+### Utility Functions   ###
+
+
+def detect_reference_loops( dd:dict[str, list[str]]) -> set:
+    """Detect reference chain loops in dictionary.  Note that,
+       in a reference loop where a --> b and b --> a, only 
+       a or b might be detected and not both.  Python and 
+       MicroPython might also give different answers, based
+       on ordered versus non-ordered defaukt dictionaries.   
+    """
+
+    def chase( key: str, seen:list[str] = None ):
+        """ Recursive descent."""
+    
+        seen = seen or []
+        
+        for ck in dd[key]:
+            if ck in terminals:
+                return
+            if ck == key or ck in seen:
+                loops.add(ck)
+                return
+                
+            seen.append(ck)
+            chase(ck, seen)
+
+    terminals = [ k for k, v in dd.items() if v == [] ]
+    keys = [ k for k, v in dd.items() if v != [] ]
+    loops =set()
+
+    for k in keys:
+        if k not in loops:
+            chase(k)
+
+    return loops    
+
+
+
+
+
+
 """ ### Map ###
 
 Basic namedtuple structure for mapping requests to calls.
@@ -250,6 +291,32 @@ class IOMapper(object):
             self.transforms = transforms or {}
         else:
             raise IOMapperError('Need to provide non-empty dict of mappings.')
+            
+        cdict = {}
+        for k,v in self.iomap.items():
+            if isinstance( v.chain, type(None)):
+                chain = []
+            elif isinstance( v.chain, str):
+                chain = [v.chain]
+            else:
+                chain = v.chain
+            cdict[k] = chain
+            
+        # print(cdict)
+            
+        # { k:v.chain for k, v in self.iomap.items() if v.chain is not None else []}
+  
+            
+        rloops = detect_reference_loops(cdict)
+
+        if len(rloops) > 0:
+           raise IOMapperError('Reference loops detected for keys: ', rloops)
+        else:
+            if MDEBUG:
+                print()
+                print('No reference loops detected')
+                print()
+        
 
         if MDEBUG:
             print('IOMap:')
@@ -509,7 +576,7 @@ if __name__ == '__main__':
         return round(20 + (4 - 5*random()), 2)
 
     def calibrate_temp(t: float) -> float:
-        return t * 1.3
+        return round(t * 1.3, 2)
 
     nl()
     print('### IOMapper Test')
@@ -544,7 +611,7 @@ if __name__ == '__main__':
                             target=fan.get_state,
                             params=[],
                             vreturn='fan_state',
-                            chain=None),
+                            chain=[]),
 
           'led_on':       Map( wrap=None,
                             target=led.set,

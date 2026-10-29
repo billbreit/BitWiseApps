@@ -102,13 +102,13 @@ def diff( x:int, y:int ) -> int:
     """( 1, 0 ) or ( 0, 1 ), but not both nor neither ( XOR )"""
     return x ^ y
     
-def diff_ones( old:int, new:int ) -> int:
+def diffTrue( old:int, new:int ) -> int:
     """Filter out evals that have gone from 1 -> 0.  Useful for ECA engine,
        condition eval as False will not trigger action, no need to test.
        In an inference engine, 0->1 might lead to an assertion."""
     return (old ^ new) & new 
     
-def diff_zeros( old:int, new:int ) -> int:
+def diffFalse( old:int, new:int ) -> int:
     """Filter out evals that have gone from 0 -> 1.  Useful for inference
        engine, condition 1->0 may lead to a retraction."""
     return (old ^ new) & old 
