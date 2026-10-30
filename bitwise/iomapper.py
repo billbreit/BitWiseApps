@@ -67,11 +67,9 @@ del (x, xx, XX, xxx, XXX)
 
 
 def detect_reference_loops( dd:dict[str, list[str]]) -> set:
-    """Detect reference chain loops in dictionary.  Note that,
-       in a reference loop where a --> b and b --> a, only 
-       a or b might be detected and not both.  Python and 
-       MicroPython might also give different answers, based
-       on ordered versus non-ordered defaukt dictionaries.   
+    """Detect reference chain loops in dictionary.  Python and 
+       MicroPython might also give different answers, based on
+       ordered versus non-ordered default dictionaries.   
     """
 
     def chase( key: str, seen:list[str] = None ):
@@ -81,21 +79,19 @@ def detect_reference_loops( dd:dict[str, list[str]]) -> set:
         
         for ck in dd[key]:
             if ck in terminals:
-                return
-            if ck == key or ck in seen:
+                continue
+            elif ck == key or ck in seen:
                 loops.add(ck)
-                return
-                
-            seen.append(ck)
-            chase(ck, seen)
+            else:
+                seen.append(ck)
+                chase(ck, seen)
 
     terminals = [ k for k, v in dd.items() if v == [] ]
     keys = [ k for k, v in dd.items() if v != [] ]
     loops =set()
 
     for k in keys:
-        if k not in loops:
-            chase(k)
+        chase(k)
 
     return loops    
 
@@ -291,7 +287,8 @@ class IOMapper(object):
             self.transforms = transforms or {}
         else:
             raise IOMapperError('Need to provide non-empty dict of mappings.')
-            
+        
+        # detect chaining loops
         cdict = {}
         for k,v in self.iomap.items():
             if isinstance( v.chain, type(None)):
@@ -301,25 +298,21 @@ class IOMapper(object):
             else:
                 chain = v.chain
             cdict[k] = chain
-            
-        # print(cdict)
-            
-        # { k:v.chain for k, v in self.iomap.items() if v.chain is not None else []}
-  
-            
+      
         rloops = detect_reference_loops(cdict)
 
         if len(rloops) > 0:
-           raise IOMapperError('Reference loops detected for keys: ', rloops)
+           raise IOMapperError('Reference chain loops detected for keys: ', rloops)
         else:
             if MDEBUG:
                 print()
-                print('No reference loops detected')
+                print('No reference loops detected in iomap.')
                 print()
         
 
         if MDEBUG:
-            print('IOMap:')
+            print('IOMap Defintion:')
+            print()
             for k, v in self.iomap.items():
                 print(f"{k:12}: {v}")
             print()
@@ -843,8 +836,35 @@ and 'led_state' so values are in sync with fan.ON.")
         "Note that phone did not change but the 'phone' in values dict did.")
     nl()
 
+
+    print('=== Detect Reference Chain Loops in IOMap Definition ===')
+    nl()
+    
+    chaind = { 'a': [ 'b', 'c', 'j' ],
+      'b': [ 'e', 'f', 'g'],
+      'c': [ 'h', 'i', 'j' ],
+      'd': ['d'],
+      'e': [ 'f'],
+      'f': ['b'],
+      'g': ['e'],
+      'h': [],
+      'i': [],
+      'j': [],
+      }
+      
+    print('IOMap keys/chain keys with reference loops')
+    print(chaind)
+    nl() 
+      
+    loops = detect_reference_loops(chaind)
+    print('detect_reference_loops returned ', loops)
+
+    if len(loops) > 0:
+        # raise IOMapperError('Reference loops detected for keys: ', loops)
+        print('IOMapperError: Reference loops detected for keys: ', loops)
+    nl()
+
     print('END')
 
     print()
-
     # print('locals ', locals())
