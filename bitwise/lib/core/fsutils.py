@@ -10,7 +10,7 @@ def is_micropython():
 
 def isdir(path:str) -> bool:
     try:
-        return bool(os.stat(path)[0] & 0o040000)
+        return bool(os.stat(path)[0] & 0o040000)  #  or 0x4000 
     except OSError:
         return False
 

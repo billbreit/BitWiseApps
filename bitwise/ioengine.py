@@ -30,6 +30,15 @@ The cross-references for forward/backward mapping between
 Keys-Conditions-Actions ( 'xrefs' ) can consume a significant amount
 of memory on small platforms.
 
+There are two distinct types of logic engine:
+
+Transactor engine that retests all actions and conditions every cycle
+
+Monitor engine that only retests actions where either:
+- changed values change conditions in actions triggers 
+- actions that are running and no trigger conditions have changed from
+  true to false, in other words, continuing actions from the last cycle.
+
 """
 
 # Important: The demo is set up in 'visible engine' mode generating a
@@ -46,7 +55,8 @@ from jfloader import JSONFileLoader
 
 from lib.core.utils import is_micropython
 from lib.core.gentools import chain
-from lib.core.bitops import power2, bit_indexes, diff, diffTrue, all_of, bitslice_set
+from lib.core.bitops import power2, bit_indexes, diff, diffTrue, diffFalse, \
+                            all_of, any_of, none_of, bitslice_set
 
 from lib.evaluator import Evaluator, Condition
 
@@ -814,6 +824,7 @@ class IOEngineBase():
 class TransactorEngine(IOEngineBase):
     """Transaction Type Event-Condition-Action Engine"""
 
+    # Attrs exported in to_dict method
     _export_attrs = ['mapper', 'evaluator', 'conditions', 'read_keys',
                      'cond_macros', 'conflict_sets', 'condition_set',
                      'key_conds_xref', 'action_trigger_xref']
@@ -833,7 +844,9 @@ class TransactorEngine(IOEngineBase):
             print(self.engine_info())
             print()
 
-    def _find_changed_actions(self):
+    def _find_actions_to_test(self):
+        """Test all actions."""
+        
         return range(len(self.action_trigger_xref))
 
     def run_cycle(self):
@@ -853,7 +866,7 @@ class TransactorEngine(IOEngineBase):
         if EDEBUG:
             print('# Transactor Evaluation ( evaluate all )')
 
-        changed_actions = self._find_changed_actions()
+        changed_actions = self._find_actions_to_test()
 
         if EDEBUG:
             print('Found changed actions -> ', changed_actions)
@@ -978,6 +991,7 @@ class MonitorEngine(IOEngineBase):
        cycle to the next.
     """
 
+    # Attrs exported in to_dict method
     _export_attrs = ['mapper', 'evaluator', 'conditions', 'read_keys',
                      'cond_macros', 'conflict_sets', 'condition_set',
                      'action_trigger_xref', 'cond_actions_xref', 'key_conds_xref',
@@ -986,6 +1000,11 @@ class MonitorEngine(IOEngineBase):
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs )
+        
+        """ Actions run on the last cycle, if index not in diffFalse, still True,
+            add slot to action tests """
+        
+        self.actions_last_cycle: list[int] = []   
 
         # action-to-cond(trigger) xref,when int matches current eval, do action
 
@@ -1017,6 +1036,155 @@ class MonitorEngine(IOEngineBase):
             print(self.engine_info())
             print()
 
+
+
+    def _find_actions_to_test(self) -> list[int]:
+        """For 'monitor mode' engine, there are two basic situations:
+        
+           The first situation only binds net changes and their dependencies.
+           Find *potentially* changed triggers for actions.
+
+           changed value keys -> changed conditions,
+                                 evaluate changed condtions -> changed actions.
+
+           Returns a list of action indexes for re-test in action_trigger_xref.
+           The action trigger may fire ( match ) or not.
+           
+           The second situtation is where the are no changed value keys but
+           an action that ran last cycle has no conditions that went from True
+           to False.  There are no changes so keep going ... in this case,
+           the action will always trigger.
+           
+           It's big and messy.  In most situations, Transactor will perform better
+           except when:
+           - high volatility in values
+           - many rules but only a few firing each cycle
+        """
+        
+        def find_changed_keys():
+        
+            return [ self.values.vkeys[index] for index in
+            bit_indexes(self.values.changed & self.keys_used)]
+            
+        def find_changed_conditions(changed_keys):
+            conds_changed = 0
+            for key in changed_keys:
+                conds_changed |= self.key_conds_xref[key]
+            return conds_changed
+                
+        def evaluate_changed_conditions(conds_changed):
+        
+            new_cond_evals = self.cond_evals
+
+            # Set bit with result of eval ( eval -> True = 1, False = 0 )
+            for cond_index in bit_indexes(conds_changed):
+                if EDEBUG: print(f'  testing cond {cond_index} -> {self.condition_set[cond_index]}')
+                new_cond_evals = bitslice_set(
+                                     new_cond_evals,
+                                     cond_index,
+                                     1,
+                                     int(self.evaluate_cond(
+                                           self.condition_set[cond_index])))
+                                           
+            return new_cond_evals
+            
+        def find_changed_actions(cond_eval_diff_true):
+            actions_changed = 0
+            for cond_index in bit_indexes(cond_eval_diff_true):
+                if EDEBUG: print(f'  cond {cond_index} {self.cond_actions_xref[cond_index]:010b}')
+                actions_changed |= self.cond_actions_xref[cond_index]
+                
+            return actions_changed
+            
+
+        if EDEBUG: print('--> finding actions to test\n')
+
+        if EDEBUG:
+            print(f'Values changed:  {self.values.changed:012b}')
+            print(f'Values used:     {self.keys_used:012b}')
+
+        changed_keys = find_changed_keys()
+
+        if EDEBUG:
+            print('Keys changed:         ', self.values.keys_changed())
+            print('Keys changed and used ', changed_keys)
+
+        if not changed_keys:  # Nothing changed and used
+            if EDEBUG: print('--> No keys changed.')
+            return []
+
+        # map value dict keys to conditions ( where used ), accumulate
+
+        conds_changed = find_changed_conditions(changed_keys)
+
+        if EDEBUG:
+            print(f'Conditions changed:   {conds_changed:010b}')
+            print()
+            
+        if conds_changed:  # conditions changed
+            new_cond_evals = evaluate_changed_conditions(conds_changed)
+        else:
+            new_cond_evals = self.cond_evals 
+
+        # evaluate potentially changed conditions
+
+        old_cond_evals = self.cond_evals
+
+        if EDEBUG: print()
+
+        cond_eval_diff= diff(self.cond_evals, new_cond_evals)
+        
+        # new evals to 0->1, filter out 1->0, will not tigger action 
+        cond_eval_diff_t = diffTrue(self.cond_evals, new_cond_evals)
+        cond_eval_diff_f = diffFalse(self.cond_evals, new_cond_evals)
+
+        # On first pass, need cond diffs from changed keys to get actions,
+        # but won't other bind other T/F cond evals, force init.
+
+        if self.cond_evals == 0:
+            self.evaluate_all_conds()  # exception for first pass
+            if EDEBUG:
+                print(f'-> Initializing cond_evals from 0 to {self.cond_evals:010b}')
+                print()
+        else:
+            self.cond_evals = new_cond_evals
+
+        if EDEBUG:
+            print(f'old_cond_evals:      {old_cond_evals:10b}')
+            print(f'new_cond_evals:      {new_cond_evals:10b}')
+            print(f'cond_eval_diff:      {cond_eval_diff:10b}')
+            print(f'cond_eval_diffTrue:  {cond_eval_diff_t:10b}')
+            print(f'cond_eval_diffFalse: {cond_eval_diff_f:10b}')
+            print()
+
+        if cond_eval_diff_t == 0:  # no change to cond eval, no actions
+            if EDEBUG: print('--> No conditions changed.')
+            actions_changed = 0
+        else:
+            # map changed conditions to actions where used, accumulate
+            if EDEBUG: print('Find changed actions')
+            actions_changed = find_changed_actions(cond_eval_diff_t)
+
+            
+        # find action run last cycle with no changed conditions,
+        # but still true, that is action.conditions not in diffFalse.
+        # This is actually backchaining rather that forwardchaining.
+        
+        actions_to_test: list[int] = bit_indexes(actions_changed)
+        
+        if EDEBUG: print(f'Find continuing actions - last actions {self.actions_last_cycle}')
+       
+        if cond_eval_diff_f != 0:  # conditions went from True to False
+            if EDEBUG: print(f'diffFalse = {bin(cond_eval_diff_f)}') 
+            for slot in self.actions_last_cycle:   # if any
+                if not cond_eval_diff_f & self.action_trigger_xref[slot][1]:
+                    if slot not in actions_to_test:
+                        if EDEBUG:  print(f'Adding continued action {slot} to test actions' )
+                        actions_to_test.append(slot)  # redundant, will always succeed
+                    
+        return actions_to_test        
+         
+       
     def run_cycle(self):
         """Run a binding cycle for iomapper.  This is the main entry
            point into IOEngine.
@@ -1038,7 +1206,8 @@ class MonitorEngine(IOEngineBase):
 
         # test engine type.  If 'monitor', else range(len(action_trigger_xref))
 
-        changed_actions = self._find_changed_actions()
+        changed_actions = self._find_actions_to_test()
+        self.actions_last_cycle = []  # consumed
 
         if EDEBUG:
             print('Found changed actions -> ', changed_actions)
@@ -1069,6 +1238,7 @@ class MonitorEngine(IOEngineBase):
                     if action not in actions:
                         if EDEBUG: print(f"Action '{action}' added to actions list.")
                         actions.append(action)
+                        self.actions_last_cycle.append(i)
                     else:
                         if EDEBUG: print(f"Duplicate action '{action}' not added to actions list.")
 
@@ -1086,100 +1256,6 @@ class MonitorEngine(IOEngineBase):
             if EDEBUG: print('Adding action to agenda: ', action, '\n')
             self.add_agenda(Run(action))
 
-    def _find_changed_actions(self) -> list[int]:
-        """For 'monitor mode' engine, based on only binding net changes and their
-           dependencies.  Find *potentially* changed triggers for actions.
-
-           changed value keys -> changed conditions,
-                                 evaluate changed condtions -> changed actions.
-
-           Returns a list of action indexes for re-test in action_trigger_xref.
-           The action trigger may fire ( match ) or not.
-
-           This optimization gurantees that a tigger won't be tested with
-           the same conditions between one iomapper binding cycle and the next. """
-
-        if EDEBUG: print('--> finding changed actions\n')
-
-        if EDEBUG:
-            print(f'Values changed:  {self.values.changed:012b}')
-            print(f'Values used:     {self.keys_used:012b}')
-
-        changed_keys = [ self.values.vkeys[index] for index in
-            bit_indexes(self.values.changed & self.keys_used)]
-
-        if EDEBUG:
-            print('Keys changed:         ', self.values.keys_changed())
-            print('Keys changed and used ', changed_keys)
-
-        if not changed_keys:  # Nothing changed and used
-            if EDEBUG: print('--> No keys changed.')
-            return []
-
-        # map value dict keys to conditions ( where used ), accumulate
-
-        conds_changed = 0
-        for key in changed_keys:
-            conds_changed |= self.key_conds_xref[key]
-
-        if EDEBUG:
-            print(f'Conditions changed:   {conds_changed:010b}')
-            print()
-
-        # evaluate potentially changed conditions
-
-        old_cond_evals = self.cond_evals
-        new_cond_evals = self.cond_evals
-
-        # Set bit with result of eval ( eval -> True = 1, False = 0 )
-        for cond_index in bit_indexes(conds_changed):
-            if EDEBUG: print(f'  testing cond {cond_index} -> {self.condition_set[cond_index]}')
-            new_cond_evals = bitslice_set(
-                                 new_cond_evals,
-                                 cond_index,
-                                 1,
-                                 int(self.evaluate_cond(
-                                       self.condition_set[cond_index])))
-        if EDEBUG: print()
-
-        cond_eval_diff= diff(self.cond_evals, new_cond_evals)
-        
-        # new evals to 0->1, filter out 1->0, will not tigger action 
-        cond_eval_diff_f = diffTrue(self.cond_evals, new_cond_evals)
-
-        # On first pass, need cond diffs from changed keys to get actions,
-        # but won't other bind other T/F cond evals, force init.
-
-        if self.cond_evals == 0:
-            self.evaluate_all_conds()  # exception for first pass
-            if EDEBUG:
-                print(f'-> Initializing cond_evals from 0 to {self.cond_evals:010b}')
-                print()
-        else:
-            self.cond_evals = new_cond_evals
-
-        if EDEBUG:
-            print(f'old_cond_evals:                  {old_cond_evals:10b}')
-            print(f'new_cond_evals:                  {new_cond_evals:10b}')
-            print(f'cond_eval_diff:                  {cond_eval_diff:10b}')
-            print(f'cond_eval_diff (filtered false): {cond_eval_diff_f:10b}')
-            print()
-
-        if cond_eval_diff_f == 0:  # no change to cond eval, no actions
-            if EDEBUG: print('--> No conditions changed.')
-            return []
-
-        if EDEBUG: print('Find changed actions')
-
-        # map changed conditions to actions where used, accumulate
-
-        actions_changed = 0
-        for cond_index in bit_indexes(cond_eval_diff_f):
-            if EDEBUG: print(f'  cond {cond_index} {self.cond_actions_xref[cond_index]:010b}')
-            actions_changed |= self.cond_actions_xref[cond_index]
-
-        # applied to test actions in action_trigger_xref
-        return bit_indexes(actions_changed)
 
 
     def engine_info(self):
@@ -1283,6 +1359,8 @@ if __name__ == '__main__':
                   'fan_off': [Condition('fan_state', 'eq', 'fan_ON' ),
                               Condition('switch_state', 'eq', 'switch_OFF'),
                               Condition('room_temp', 'lt', 'lower_limit')],
+                              
+                  'always_run' : [Condition('always_run', 'eq', True )]
                   }
 
     conflicts = ['fan_state', {'switch_on', 'switch_off'}]
@@ -1296,28 +1374,34 @@ if __name__ == '__main__':
     print('### Starting IOEngine Run ###')
     print()
 
-    def erun(ioengn, limit):
+    def erun(ioe, limit):
         """Basic Controller Function"""
 
         n = 1
         while n <= limit:
 
             print('### Running cycle:', n, '\n')
-            ioengn.run_cycle()
+            ioe.run_cycle()
+            
+            if n == 2:
+                ioe.add_agenda(SetVal('always_run', True))
 
             if n == 4:
                 print()
                 print('-> Injecting switch_on into agenda')
-                ioengn.add_agenda(Run('switch_on'))
+                ioe.add_agenda(Run('switch_on'))
                 print()
+                
+            if n == 6:
+                ioe.add_agenda(SetVal('always_run', False))
 
             if n == 8:
                 print()
                 print('-> Injecting switch_off into agenda')
-                ioeng.add_agenda(Run('switch_off'))
+                ioe.add_agenda(Run('switch_off'))
                 print()
 
-            print('agenda ', ioengn.agenda)
+            print('agenda ', ioe.agenda)
             print()
 
             n += 1
@@ -1399,9 +1483,9 @@ if __name__ == '__main__':
 
     checkstats(ioeng3.values)
     
-    print('Run MonitorEngine 6 cycles  \n')
+    print('Run MonitorEngine 8 cycles  \n')
 
-    erun(ioeng3, 6)
+    erun(ioeng3, 8)
 
         
     print('End Monitor Engine test\n')

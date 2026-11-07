@@ -68,7 +68,7 @@ del (x, xx, XX, xxx, XXX)
 
 def detect_reference_loops( dd:dict[str, list[str]]) -> set:
     """Detect reference chain loops in dictionary.  Python and 
-       MicroPython might also give different answers, based on
+       MicroPython might give different answers based on
        ordered versus non-ordered default dictionaries.   
     """
 

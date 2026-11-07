@@ -39,6 +39,11 @@ def get_lowerlimit(temp:float):
 
     return temp - 0.5
 
+def always_run():
+    "Dummy Test"
+    
+    return
+
 
 ### Basic Fan Example ###
 
@@ -55,6 +60,7 @@ class BasicFanIOMapper( IOMapper ):
                       ('led_off_param', {'brightness': LED.OFF}),
                       ('upper_limit', 35.5),
                       ('lower_limit', 34.5 ),
+                      ('always_run', False)
                       ]) # list of k/v tuple pairs
 
     _iomap = {'get_temp': MM( target=temperature,    # MakeMap helper
@@ -96,7 +102,9 @@ class BasicFanIOMapper( IOMapper ):
                              chain='led_status'),
              'led_status': MM( wrap=a_get('get_state'),  # @properties must be wrapped
                              params=[led],
-                             vreturn='led_state')
+                             vreturn='led_state'),
+             'always_run':  MM( target=always_run,
+                             params=[]),
                         }
 
     _read_keys = ['get_temp']

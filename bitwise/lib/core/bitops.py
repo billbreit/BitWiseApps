@@ -21,6 +21,10 @@ import math
 
 """
 
+""" ### Basic Platform Specific Bit Manipulation Functions ### """
+
+"""Python Specific """
+
 def py_bitlength( bint: int ) -> int:
     """Builtin, very fast, since py3.1"""
 
@@ -44,8 +48,7 @@ def py_bitcount( bint: int ) -> int:
 
     return bint.bit_count()
 
-
-"""MicroPython specific """
+"""MicroPython Specific """
 
 MPY_MAX_LOG2_POWER = 127
 MPY_MAX_LOG2_VALUE = 2**127
@@ -108,12 +111,12 @@ except AttributeError as e:    # micropython or < py3.10
     bit_count = mpy_bitcount
     
  
-""" ### Basic Bit Manipulation Function ### """
+""" ### General Bit Manipulation and Logic Functions ### """
 
 def is_bitint( n: int ) -> bool:
-    """Test for basic bitint type, a non-negative integer.  This is primarily
+    """Test for basic bit integer type, a non-negative integer.  This is primarily
        a ones-complement interpretation for indexing into lists.
-       Maybe size limit, bit_length < 500, starts getting seriously non-linear.
+       Maybe a size limit, bit_length < 500: can get seriously non-linear.
     """
 
     if not isinstance(n, int) or n < 0:
@@ -132,7 +135,7 @@ def bit_indexes(bint: int) -> list[int]:
     """Make list of ints for indexes of bits that are set. Indexes are
        essentially the same as base-2 exponents.
        For example: bit_indexes(23) => [0, 1, 2, 4]
-                    2^0 + 2^1 + 2^2 + 2^4 = 23
+                    2^0 + 2^1 + 2^2 + 2^4 = 23 b10111
     """
 
     if bint < 0: return None  # error
@@ -146,9 +149,9 @@ def bit_indexes(bint: int) -> list[int]:
         
     return bit_idx
     
-def bit_from_indexes( indexes: list[int] ) -> int:
-    """Make int for list of indexes,
-    bit_from_indexes([0, 1, 2, 4])  => 23"""
+def from_bit_indexes( indexes: list[int] ) -> int:
+    """Make int from list of indexes,
+    from_bit_indexes([0, 1, 2, 4])  => 23 b10111 """
     
     bint = 0
     for i in indexes:
@@ -161,7 +164,7 @@ def make_bitmask( length: int ) -> int:
     return  (1 << length) - 1  
 
     
-""" ### Basic Binary/Boolean Tests ### """
+""" ### Binary/Boolean Tests ### """
 
 def one_bit_set(bint: int) -> bool:
     """Only one bit set in bint.
@@ -236,10 +239,7 @@ def match( x:int, y:int ) -> int:
     
     return x & y 
 
-    
-
 """Bit Oerations, list-like capabilities for integer."""
-
 
 def bit_get(bint: int, index: int) -> int:
     """Get bit n in bint x """
@@ -286,7 +286,7 @@ def bit_insert(bint: int, index: int, value: int = 0) -> int:
     
     
 """ Multi-bit/Bitslice operations, optimized, faster than theoretical limit,
-    possilby due to int vectorization support."""
+    possilby due to hardware int vectorization support."""
 
 def bitslice_get(bint: int, index: int, bit_len: int) -> int:
     """Return bitlength bits at index."""  
@@ -339,6 +339,8 @@ if __name__=='__main__':
     print('-'*40)
     for x in vals:
         print( bin(x), ' = ', bit_length(x), bit_count(x))
+        print()
+    print('Note that bit_length(0) = 1, not like python')
     print()
 
     print('logar2, more like top_bit exp function than log, except for 0 !')
@@ -346,6 +348,8 @@ if __name__=='__main__':
 
     for x in vals:
         print( bin(x), ' = ', logar2(x))
+    print()
+    print('Note that logar2(0) = 0, not like python -> ValueError')
     print()
 
     print('bit_indexes and bit_count')
