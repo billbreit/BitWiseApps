@@ -1108,14 +1108,15 @@ class MonitorEngine(IOEngineBase):
         if EDEBUG:
             print('Keys changed:         ', self.values.keys_changed())
             print('Keys changed and used ', changed_keys)
-
-        if not changed_keys:  # Nothing changed and used
-            if EDEBUG: print('--> No keys changed.')
-            return []
+            
 
         # map value dict keys to conditions ( where used ), accumulate
 
-        conds_changed = find_changed_conditions(changed_keys)
+        if changed_keys:  # changed and used
+            conds_changed = find_changed_conditions(changed_keys)
+        else:
+            conds_changed = 0
+            if EDEBUG: print('--> No keys changed.')
 
         if EDEBUG:
             print(f'Conditions changed:   {conds_changed:010b}')
