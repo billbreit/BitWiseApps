@@ -56,7 +56,7 @@ from jfloader import JSONFileLoader
 from lib.core.utils import is_micropython
 from lib.core.gentools import chain
 from lib.core.bitops import power2, bit_indexes, diff, diffTrue, diffFalse, \
-                            all_of, any_of, none_of, bitslice_set
+                            all_of, none_of, bitslice_set
 
 from lib.evaluator import Evaluator, Condition
 
@@ -1055,10 +1055,11 @@ class MonitorEngine(IOEngineBase):
            to False.  There are no changes so keep going ... in this case,
            the action will always trigger.
            
-           It's big and messy.  In most situations, Transactor will perform better
-           except when:
-           - high volatility in values
-           - many rules but only a few firing each cycle
+           It's big, complicated and a bit messy. In most situations,
+           Transactor may perform better except when:
+           - low volatility in underlying values
+           - many rules ( >30 ) but only a few conditions change each cycle,
+             due to narrow value ranges, for instance.
         """
         
         def find_changed_keys():
@@ -1143,7 +1144,7 @@ class MonitorEngine(IOEngineBase):
         # but won't other bind other T/F cond evals, force init.
 
         if self.cond_evals == 0:
-            self.evaluate_all_conds()  # exception for first pass
+            self.evaluate_all_conds()  # assume is first pass
             if EDEBUG:
                 print(f'-> Initializing cond_evals from 0 to {self.cond_evals:010b}')
                 print()
@@ -1163,25 +1164,24 @@ class MonitorEngine(IOEngineBase):
             actions_changed = 0
         else:
             # map changed conditions to actions where used, accumulate
-            if EDEBUG: print('Find changed actions')
+            if EDEBUG: print('--> Find changed actions')
             actions_changed = find_changed_actions(cond_eval_diff_t)
 
             
         # find action run last cycle with no changed conditions,
-        # but still true, that is action.conditions not in diffFalse.
-        # This is actually backchaining rather that forwardchaining.
+        # they are still still true, that is action.conditions not in
+        # diffFalse. This is backchaining rather that forwardchaining.
         
         actions_to_test: list[int] = bit_indexes(actions_changed)
         
         if EDEBUG: print(f'Find continuing actions - last actions {self.actions_last_cycle}')
        
-        if cond_eval_diff_f != 0:  # conditions went from True to False
-            if EDEBUG: print(f'diffFalse = {bin(cond_eval_diff_f)}') 
-            for slot in self.actions_last_cycle:   # if any
-                if not cond_eval_diff_f & self.action_trigger_xref[slot][1]:
-                    if slot not in actions_to_test:
-                        if EDEBUG:  print(f'Adding continued action {slot} to test actions' )
-                        actions_to_test.append(slot)  # redundant, will always succeed
+        if EDEBUG: print(f'diffFalse = {bin(cond_eval_diff_f)}') 
+        for slot in self.actions_last_cycle:   # if any
+            if none_of(self.action_trigger_xref[slot][1], cond_eval_diff_f):
+                if slot not in actions_to_test:
+                    if EDEBUG:  print(f'Adding continued action {slot} to test actions' )
+                    actions_to_test.append(slot)  # redundant, will always succeed
                     
         return actions_to_test        
          
@@ -1190,7 +1190,7 @@ class MonitorEngine(IOEngineBase):
         """Run a binding cycle for iomapper.  This is the main entry
            point into IOEngine.
 
-           As set up, it runs in 'montitor mode', using _find_changed_actions."""
+           As set up, it runs in 'montitor mode', using _find_actions_to_test."""
 
         global saved_actions
 
@@ -1225,8 +1225,6 @@ class MonitorEngine(IOEngineBase):
         if changed_actions:
             if EDEBUG: print('Changed actions ', changed_actions)
 
-            # self.evaluate_all_conds()
-
             if EDEBUG:
                 print('Evaluated conditions: ', bin(self.cond_evals))
                 print()
@@ -1254,7 +1252,7 @@ class MonitorEngine(IOEngineBase):
                     raise IOEngineError(f'Conflicting actions in action list ', actions)
 
         for action in actions:
-            if EDEBUG: print('Adding action to agenda: ', action, '\n')
+            if EDEBUG: print('Adding action to agenda: ', action)
             self.add_agenda(Run(action))
 
 
@@ -1385,6 +1383,7 @@ if __name__ == '__main__':
             ioe.run_cycle()
             
             if n == 2:
+                print('-> Injecting set always_run True into agenda')
                 ioe.add_agenda(SetVal('always_run', True))
 
             if n == 4:
@@ -1394,6 +1393,7 @@ if __name__ == '__main__':
                 print()
                 
             if n == 6:
+                print('-> Injecting set always_run False into agenda')
                 ioe.add_agenda(SetVal('always_run', False))
 
             if n == 8:

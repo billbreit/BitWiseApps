@@ -1,6 +1,7 @@
 """A Collection of Bit Logic Functions.
 
-   Part of https://github.com/billbreit/BitWiseApps. """
+   Part of https://github.com/billbreit/BitWiseApps.
+   For mixed bitwise and boolean operations, always use brackets !"""
 
 import math
 
@@ -58,7 +59,7 @@ def mpy_logar2(bint: int) -> int:
        int->float meltdown on mpy, only works with ints."""
 
     if bint < 0: return None  # error
-    if bint == 0: return 0   # rather than None ???
+    if bint == 0: return 0    # rather than ValueError
     log = 0
 
     while bint > MPY_MAX_LOG2_VALUE:
@@ -204,15 +205,15 @@ def all_of( x:int, y:int ) -> bool:
     """All of x in y, equiv. to set.issubset.
       Note that all_of(x, y) != all_of(y,x) unless x==y.  """
     if x == 0: return False 
-    return x & y == x
+    return (x & y) == x
 
 def any_of( x:int, y:int ) -> bool:
     """Any of integer x in y. """
-    return x & y > 0
+    return (x & y) > 0
 
 def none_of( x:int, y:int ) -> bool:
     """None of x in y."""
-    return x & y == 0
+    return (x & y) == 0
 
 
 """Basic logical 'vector' operations on bit integers.
@@ -223,14 +224,14 @@ def diff( x:int, y:int ) -> int:
     return x ^ y
     
 def diffTrue( old:int, new:int ) -> int:
-    """Filter out evals that have gone from 1 -> 0.  Useful for ECA engine,
+    """Select evals that have gone from 0 -> 1.  Useful for ECA engine,
        condition eval as False will not trigger action, no need to test.
        In an inference engine, 0->1 might lead to an assertion."""
     return (old ^ new) & new 
     
 def diffFalse( old:int, new:int ) -> int:
-    """Filter out evals that have gone from 0 -> 1.  Useful for inference
-       engine, condition 1->0 may lead to a retraction."""
+    """Select evals that have gone from 1 -> 0.  Useful for inference
+       engine, condition 1->0 would probably lead to a retraction."""
     return (old ^ new) & old 
 
 def match( x:int, y:int ) -> int:
