@@ -1,6 +1,6 @@
 """
 module:     iomapper
-version:    v0.0.2
+version:    v0.0.3
 sourcecode: https://github.com/billbreit/BitWiseApps
 copyleft:   2024 by Bill Breitmayer
 licence:    GNU GPL v3 or above

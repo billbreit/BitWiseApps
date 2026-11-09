@@ -66,133 +66,6 @@ from lib.vdict import VolatileDict, checkstats
 EDEBUG = False   # both code debugging and action/condition debugging
 
 
-class RuleSetLoader(JSONFileLoader):
-    """Load/save a rule set from a json file.
-       Creates file with Transactor format which
-       uses a subset of possible sttibutes, although
-       xrefs generally don't need pre/post processing.
-    """
-
-    # override class defaults
-    _def_dir = 'rulesets'
-    _def_filename = 'ioenginetest'
-
-    _def_iomappers = {'IOMapper': IOMapper}
-    _def_evaluators = {'Evaluator': Evaluator}
-
-    def __init__(self,
-                 iomappers: dict = None,
-                 evaluators: dict = None,
-                 *args, **kws):
-
-        super().__init__(*args, **kws)
-
-        self.iomapper: dict = self._def_iomappers
-        self.evaluator: dict = self._def_evaluators
-
-        if iomappers:
-            self.iomapper.update(iomappers)
-        if evaluators:
-            self.evaluator.update(evaluators)
-
-        if EDEBUG:
-            print('In RuleSetLoader __init__')
-
-    def prepare_types(self, json_dict: dict) -> dict:
-        """Prepare non-jasonable types for save."""
-
-        def prepare_conditions():
-            """Fix for mpy JSON error. Not converting namedtuple
-               values in dict to list."""
-
-            conditions: dict = json_dict['conditions']
-            new_cond_dict = dict()
-
-            for k, v in conditions.items():
-                new_conds = []
-                for conds in v:
-                    new_list = []
-                    for cond in conds:
-                        new_list.append(list(cond))
-                    new_conds.append(new_list)
-
-                new_cond_dict[k] = new_conds
-
-            return new_cond_dict
-
-        new_dict = {}
-        new_dict.update(json_dict)  # copy
-
-        new_dict['conflict_sets'] = [list(s) for s
-                                     in json_dict['conflict_sets']]
-
-        # reference class name -> str, must be static stateless or trigger
-        # instance creation / restoration, mapper in this case where
-        # mapper instance can be overridden by ioeng.from_dict
-        new_dict['mapper'] = json_dict['mapper'] .__class__.__name__
-        new_dict['evaluator'] = json_dict['evaluator'].__class__.__name__
-
-        if is_micropython():   # JSON error,
-            # manually flatten list of namedtuples to list of lists
-            new_dict['conditions'] = prepare_conditions()
-            new_dict['condition_set'] = [list(cond)
-                                         for cond
-                                         in json_dict['condition_set']]
-
-            for k, conds in json_dict['cond_macros'].items():
-                conds_list = []  # [ list(cond) for cond in conds ]
-                for cond in conds:
-                    conds_list.append(list(cond))
-                new_dict['cond_macros'][k] = conds_list
-
-        return new_dict
-
-    def restore_types(self, json_dict: dict) -> dict:
-        """Restore iomapper, evaluator, sets, Condition namedtuples."""
-
-        def restore_conditions():
-
-            conditions: dict = json_dict['conditions']
-            new_cond_dict = dict()
-
-            for k, v in conditions.items():
-                new_conds = []
-                for conds in v:
-                    new_list = []
-                    for cond in conds:
-                        new_list.append(Condition(*cond))
-                    new_conds.append(new_list)
-
-                new_cond_dict[k] = new_conds
-
-            return new_cond_dict
-
-        new_dict = {}
-        new_dict.update(json_dict)  # copy
-
-        # new instances, may be overridden in ioe.load_from_dict
-        new_dict['mapper'] = self.iomapper[new_dict['mapper']]()
-        new_dict['evaluator'] = self.evaluator[new_dict['evaluator']]()
-
-        new_dict['action_trigger_xref'] = [(a, t)
-                                           for a, t
-                                           in new_dict['action_trigger_xref']]
-
-        for k, conds in new_dict['cond_macros'].items():
-            conds_list = []  # [ Condition(*cond) for cond in conds ]
-            for cond in conds:
-                conds_list.append(Condition(*cond))
-
-            new_dict['cond_macros'][k] = conds_list
-
-        new_dict['conditions'] = restore_conditions()
-        new_dict['conflict_sets'] = [set(s)
-                                     for s in json_dict['conflict_sets']]
-        new_dict['condition_set'] = [Condition(*cond)
-                                     for cond in json_dict['condition_set']]
-
-        return new_dict
-
 
 class IOEngineFactory(object):
     """Engine customizations based on use-case senarios:
@@ -409,6 +282,7 @@ class IOEngineBase():
                  'Values Dict Empty: must provide VolatileDict with values.')
 
         self.evaluator = evaluator or Evaluator()  # if None, default
+        self.last_known_cond_evals: int = 0         # may be useful
 
         # Test for from_dict, then do reload using from_dict
 
@@ -995,7 +869,8 @@ class MonitorEngine(IOEngineBase):
     _export_attrs = ['mapper', 'evaluator', 'conditions', 'read_keys',
                      'cond_macros', 'conflict_sets', 'condition_set',
                      'action_trigger_xref', 'cond_actions_xref', 'key_conds_xref',
-                     'cond_keys_xref', 'keys_used' ]
+                     'cond_keys_xref', 'keys_used', 'actions_last_cycle',
+                     'last_known_cond_evals' ]
 
     def __init__(self, *args, **kwargs):
 
@@ -1004,7 +879,7 @@ class MonitorEngine(IOEngineBase):
         """ Actions run on the last cycle, if index not in diffFalse, still True,
             add slot to action tests """
         
-        self.actions_last_cycle: list[int] = []   
+        self.actions_last_cycle: list[int] = []     # note is stateful 
 
         # action-to-cond(trigger) xref,when int matches current eval, do action
 
@@ -1126,11 +1001,12 @@ class MonitorEngine(IOEngineBase):
         if conds_changed:  # conditions changed
             new_cond_evals = evaluate_changed_conditions(conds_changed)
         else:
-            new_cond_evals = self.cond_evals 
-
+            new_cond_evals = self.cond_evals
+            
         # evaluate potentially changed conditions
-
+ 
         old_cond_evals = self.cond_evals
+        self.last_known_cond_evals = self.cond_evals
 
         if EDEBUG: print()
 
@@ -1303,6 +1179,10 @@ class MonitorEngine(IOEngineBase):
         out('conflict sets: list[set]')
         out(f'  {self.conflict_sets}')
         out('')
+        
+        out(f'actions_last_cycle:    {self.actions_last_cycle}')
+        out(f'last_known_cond_evals: {bin(self.last_known_cond_evals)}')
+        out('')
 
         out('action_trigger_xref: list[tuple[str,int]] ')
         for i, at_xref in enumerate(self.action_trigger_xref):
@@ -1328,8 +1208,136 @@ class MonitorEngine(IOEngineBase):
         out('')
 
 
+
         return '\n'.join(einfo)
         
+
+class RuleSetLoader(JSONFileLoader):
+    """Load/save a rule set from a json file.
+       Creates file with Transactor format which
+       uses a subset of possible sttibutes, although
+       xrefs generally don't need pre/post processing.
+    """
+
+    # override class defaults
+    _def_dir = 'rulesets'
+    _def_filename = 'ioenginetest'
+
+    _def_iomappers = {'IOMapper': IOMapper}
+    _def_evaluators = {'Evaluator': Evaluator}
+
+    def __init__(self,
+                 iomappers: dict = None,
+                 evaluators: dict = None,
+                 *args, **kws):
+
+        super().__init__(*args, **kws)
+
+        self.iomapper: dict = self._def_iomappers
+        self.evaluator: dict = self._def_evaluators
+
+        if iomappers:
+            self.iomapper.update(iomappers)
+        if evaluators:
+            self.evaluator.update(evaluators)
+
+        if EDEBUG:
+            print('In RuleSetLoader __init__')
+
+    def prepare_types(self, json_dict: dict) -> dict:
+        """Prepare non-jasonable types for save."""
+
+        def prepare_conditions():
+            """Fix for mpy JSON error. Not converting namedtuple
+               values in dict to list."""
+
+            conditions: dict = json_dict['conditions']
+            new_cond_dict = dict()
+
+            for k, v in conditions.items():
+                new_conds = []
+                for conds in v:
+                    new_list = []
+                    for cond in conds:
+                        new_list.append(list(cond))
+                    new_conds.append(new_list)
+
+                new_cond_dict[k] = new_conds
+
+            return new_cond_dict
+
+        new_dict = {}
+        new_dict.update(json_dict)  # copy
+
+        new_dict['conflict_sets'] = [list(s) for s
+                                     in json_dict['conflict_sets']]
+
+        # reference class name -> str, must be static stateless or trigger
+        # instance creation / restoration, mapper in this case where
+        # mapper instance can be overridden by ioeng.from_dict
+        new_dict['mapper'] = json_dict['mapper'] .__class__.__name__
+        new_dict['evaluator'] = json_dict['evaluator'].__class__.__name__
+
+        if is_micropython():   # JSON error,
+            # manually flatten list of namedtuples to list of lists
+            new_dict['conditions'] = prepare_conditions()
+            new_dict['condition_set'] = [list(cond)
+                                         for cond
+                                         in json_dict['condition_set']]
+
+            for k, conds in json_dict['cond_macros'].items():
+                conds_list = []  # [ list(cond) for cond in conds ]
+                for cond in conds:
+                    conds_list.append(list(cond))
+                new_dict['cond_macros'][k] = conds_list
+
+        return new_dict
+
+    def restore_types(self, json_dict: dict) -> dict:
+        """Restore iomapper, evaluator, sets, Condition namedtuples."""
+
+        def restore_conditions():
+
+            conditions: dict = json_dict['conditions']
+            new_cond_dict = dict()
+
+            for k, v in conditions.items():
+                new_conds = []
+                for conds in v:
+                    new_list = []
+                    for cond in conds:
+                        new_list.append(Condition(*cond))
+                    new_conds.append(new_list)
+
+                new_cond_dict[k] = new_conds
+
+            return new_cond_dict
+
+        new_dict = {}
+        new_dict.update(json_dict)  # copy
+
+        # new instances, may be overridden in ioe.load_from_dict
+        new_dict['mapper'] = self.iomapper[new_dict['mapper']]()
+        new_dict['evaluator'] = self.evaluator[new_dict['evaluator']]()
+
+        new_dict['action_trigger_xref'] = [(a, t)
+                                           for a, t
+                                           in new_dict['action_trigger_xref']]
+
+        for k, conds in new_dict['cond_macros'].items():
+            conds_list = []  # [ Condition(*cond) for cond in conds ]
+            for cond in conds:
+                conds_list.append(Condition(*cond))
+
+            new_dict['cond_macros'][k] = conds_list
+
+        new_dict['conditions'] = restore_conditions()
+        new_dict['conflict_sets'] = [set(s)
+                                     for s in json_dict['conflict_sets']]
+        new_dict['condition_set'] = [Condition(*cond)
+                                     for cond in json_dict['condition_set']]
+
+        return new_dict
 
 
 
