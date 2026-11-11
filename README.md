@@ -26,7 +26,7 @@ IOEngine demonstates what may be an useful application of binary indexing to bui
 
 The IOengine and Fan Engine Demo are in mid-stage development.  The real struggle from here on is going to be maintaining simplicity, keeping a small memory footprint, say under 60K in a practical usage scenario. 
 
-**fan_monitor.py**: An demo of the 'Monitor' version of the IOEngine.  It uses a more sophisticated and fairly tricky algorithm by detecting changes in the values dictionary and chasing dependencies to the action trigger rules, only testing actions where triggering conditions might have changed from false to true in the previous binding cycle.  The algorithm also accounts for a second situation where no underlying values changed for running actions that are still true, that is, if nothing changed, keep going.
+**fan_monitor.py**: A demo of the 'Monitor' version of the IOEngine.  It uses a more sophisticated and fairly tricky algorithm by detecting changes in the values dictionary and chasing dependencies to the action trigger rules, only testing actions where triggering conditions might have changed from false to true in the previous binding cycle.  The algorithm also accounts for a second situation where no underlying values changed for running actions that are still true, that is, if nothing changed, keep going.
 
 All in all, it seems to save testing of about 30% of actions across cycles, at the cost of significant overhead. My guess is that the break-even point is about 20-30 action rules, depending on the volatility of values used in triggers.  [ Needs Testing ! ].     
 
